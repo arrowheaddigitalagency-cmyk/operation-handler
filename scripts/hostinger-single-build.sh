@@ -6,8 +6,7 @@ cd "$(dirname "$0")/.."
 
 export API_URL="${API_URL:-http://127.0.0.1:4000}"
 
-corepack enable
-corepack prepare pnpm@9.15.9 --activate
+bash scripts/hostinger-ensure-pnpm.sh
 
 pnpm install --frozen-lockfile
 pnpm db:generate

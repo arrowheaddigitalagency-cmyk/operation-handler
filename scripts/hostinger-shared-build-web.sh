@@ -6,8 +6,7 @@ cd "$(dirname "$0")/.."
 
 : "${API_URL:?Set API_URL to https://api.yourdomain.com before building}"
 
-corepack enable
-corepack prepare pnpm@9.15.9 --activate
+bash scripts/hostinger-ensure-pnpm.sh
 
 pnpm install --frozen-lockfile
 pnpm db:generate

@@ -3,8 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-corepack enable
-corepack prepare pnpm@9.15.9 --activate
+bash scripts/hostinger-ensure-pnpm.sh
 
 pnpm install --frozen-lockfile
 pnpm db:generate
