@@ -34,6 +34,8 @@ export const envSchema = z.object({
   AI_PROVIDER: z.enum(["mock", "openai", "gemini"]).default("mock"),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_VISION_MODEL: z.string().default("gpt-4o-mini"),
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_VISION_MODEL: z.string().default("gemini-2.0-flash"),
   AI_MAX_IMAGES: z.coerce.number().int().positive().default(8),
   AI_MAX_IMAGE_MB: z.coerce.number().positive().default(8),
 

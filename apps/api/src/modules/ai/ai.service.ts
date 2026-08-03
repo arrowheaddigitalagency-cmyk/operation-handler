@@ -62,6 +62,8 @@ export class AiService {
       provider: env.AI_PROVIDER,
       openaiApiKey: env.OPENAI_API_KEY,
       openaiModel: env.OPENAI_VISION_MODEL,
+      geminiApiKey: env.GEMINI_API_KEY,
+      geminiModel: env.GEMINI_VISION_MODEL,
     });
 
     const reportId = await this.uniqueReportId();
@@ -128,6 +130,8 @@ export class AiService {
       provider: env.AI_PROVIDER,
       openaiApiKey: env.OPENAI_API_KEY,
       openaiModel: env.OPENAI_VISION_MODEL,
+      geminiApiKey: env.GEMINI_API_KEY,
+      geminiModel: env.GEMINI_VISION_MODEL,
     });
 
     try {

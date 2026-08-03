@@ -150,6 +150,84 @@ Do not invent unseen damage.`,
   }
 }
 
+/** Google Gemini multimodal (vision) — use when you have a Gemini API key (no OpenAI required). */
+export class GeminiVisionProvider implements VisionProvider {
+  readonly name = "gemini";
+  readonly modelVersion: string;
+
+  constructor(
+    private readonly apiKey: string,
+    model = "gemini-2.0-flash",
+  ) {
+    this.modelVersion = model;
+  }
+
+  async analyzeDamage(input: DamageSkillInput): Promise<DamageAnalysisResult> {
+    const parts: Array<Record<string, unknown>> = [
+      {
+        text: `You are an auto body damage assessor. Analyze vehicle damage photos and return STRICT JSON only (no markdown) matching:
+{"findings":[{"part":string,"severity":"minor"|"moderate"|"severe","description":string}],"complexity":"low"|"medium"|"high","durationDaysMin":0,"durationDaysMax":0,"costMin":0,"costMax":0,"currency":string,"confidence":number,"caveats":[string],"summary":string}
+IMPORTANT: Set all cost and duration numbers to 0. Pricing is applied by the shop separately. Only identify visible damage parts and severity.
+Vehicle hint: ${JSON.stringify(input.vehicleHint ?? {})}.
+Currency default: ${input.currency ?? "USD"}.
+Do not invent unseen damage.`,
+      },
+    ];
+
+    for (const img of input.images) {
+      if (img.base64) {
+        parts.push({
+          inline_data: {
+            mime_type: img.mimeType || "image/jpeg",
+            data: img.base64,
+          },
+        });
+      } else if (img.url) {
+        // Fetch remote image (e.g. Cloudinary) into inline bytes for Gemini
+        const imgRes = await fetch(img.url);
+        if (!imgRes.ok) throw new Error(`Failed to fetch image for Gemini: ${imgRes.status}`);
+        const buf = Buffer.from(await imgRes.arrayBuffer());
+        const mime = imgRes.headers.get("content-type") || img.mimeType || "image/jpeg";
+        parts.push({
+          inline_data: {
+            mime_type: mime.split(";")[0],
+            data: buf.toString("base64"),
+          },
+        });
+      }
+    }
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.modelVersion)}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts }],
+        generationConfig: {
+          temperature: 0.2,
+          responseMimeType: "application/json",
+        },
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Gemini Vision failed: ${res.status} ${text}`);
+    }
+
+    const data = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+    if (!raw.trim()) throw new Error("Gemini Vision returned empty content");
+    const parsed = resultSchema.parse(JSON.parse(raw));
+    if (!parsed.caveats.includes(AI_ESTIMATE_DISCLAIMER)) {
+      parsed.caveats.push(AI_ESTIMATE_DISCLAIMER);
+    }
+    return parsed;
+  }
+}
+
 /** Channel-agnostic AI brain. Channels never call providers directly. */
 export class AIOrchestrator {
   constructor(private readonly vision: VisionProvider) {}
@@ -170,6 +248,8 @@ export function createAIOrchestrator(opts: {
   provider: "mock" | "openai" | "gemini";
   openaiApiKey?: string;
   openaiModel?: string;
+  geminiApiKey?: string;
+  geminiModel?: string;
 }): AIOrchestrator {
   if (opts.provider === "openai") {
     if (!opts.openaiApiKey) throw new Error("OPENAI_API_KEY required for openai provider");
@@ -177,7 +257,12 @@ export function createAIOrchestrator(opts: {
       new OpenAIVisionProvider(opts.openaiApiKey, opts.openaiModel),
     );
   }
-  // gemini stub → mock until adapter implemented
+  if (opts.provider === "gemini") {
+    if (!opts.geminiApiKey) throw new Error("GEMINI_API_KEY required for gemini provider");
+    return new AIOrchestrator(
+      new GeminiVisionProvider(opts.geminiApiKey, opts.geminiModel),
+    );
+  }
   return new AIOrchestrator(new MockVisionProvider());
 }
 
