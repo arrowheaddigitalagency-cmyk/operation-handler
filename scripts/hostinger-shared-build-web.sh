@@ -8,10 +8,10 @@ cd "$SCRIPT_DIR/.."
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/hostinger-ensure-pnpm.sh"
 
-pnpm install --frozen-lockfile
+pnpm install --frozen-lockfile --prod=false
 pnpm db:generate
 pnpm --filter @cc/domain build
-API_URL="$API_URL" pnpm --filter @cc/web build
+API_URL="$API_URL" NODE_ENV=production pnpm --filter @cc/web build
 bash "$SCRIPT_DIR/hostinger-shared-prepare-standalone.sh"
 
 WEB_ENTRY="apps/web/.next/standalone/apps/web/server.js"

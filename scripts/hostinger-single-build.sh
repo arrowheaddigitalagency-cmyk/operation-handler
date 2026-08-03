@@ -9,15 +9,18 @@ export API_URL="${API_URL:-http://127.0.0.1:4000}"
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/hostinger-ensure-pnpm.sh"
 
-pnpm install --frozen-lockfile
+# Hostinger sets NODE_ENV=production during build → pnpm skips prisma/tsc/nest (devDeps).
+# Force full install for compile, then build apps in production mode.
+pnpm install --frozen-lockfile --prod=false
+
 pnpm db:generate
 pnpm --filter @cc/domain build
 pnpm --filter @cc/config build
 pnpm --filter @cc/db build
 pnpm --filter @cc/notifications build
 pnpm --filter @cc/ai build
-API_URL="$API_URL" pnpm --filter @cc/api build
-API_URL="$API_URL" pnpm --filter @cc/web build
+API_URL="$API_URL" NODE_ENV=production pnpm --filter @cc/api build
+API_URL="$API_URL" NODE_ENV=production pnpm --filter @cc/web build
 bash "$SCRIPT_DIR/hostinger-shared-prepare-standalone.sh"
 
 WEB_ENTRY="apps/web/.next/standalone/apps/web/server.js"

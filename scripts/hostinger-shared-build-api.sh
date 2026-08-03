@@ -6,13 +6,13 @@ cd "$SCRIPT_DIR/.."
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/hostinger-ensure-pnpm.sh"
 
-pnpm install --frozen-lockfile
+pnpm install --frozen-lockfile --prod=false
 pnpm db:generate
 pnpm --filter @cc/domain build
 pnpm --filter @cc/config build
 pnpm --filter @cc/db build
 pnpm --filter @cc/notifications build
 pnpm --filter @cc/ai build
-pnpm --filter @cc/api build
+NODE_ENV=production pnpm --filter @cc/api build
 
 echo "API build OK — entry: apps/api/dist/main.js"
