@@ -4,7 +4,8 @@
   "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "turbo run dev --parallel",
-    "build": "turbo run build",
+    "build": "bash scripts/hostinger-single-build.sh",
+    "build:turbo": "turbo run build",
     "lint": "turbo run lint",
     "start:api": "pnpm --filter @cc/api start",
     "start:worker": "pnpm --filter @cc/api start:worker",
