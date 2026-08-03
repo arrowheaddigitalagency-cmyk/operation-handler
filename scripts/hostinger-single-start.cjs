@@ -77,6 +77,10 @@ function resolveApiPort() {
   }
 }
 
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 function canListen(host, port) {
   return new Promise((resolve) => {
     const server = net.createServer();
@@ -88,11 +92,59 @@ function canListen(host, port) {
   });
 }
 
-async function assertPortsFree() {
-  const apiOk = await canListen(apiHost, apiPort);
-  if (!apiOk) {
-    fail(`API port ${apiHost}:${apiPort} is already in use`);
+async function waitUntilPortFree(host, port, attempts = 40) {
+  for (let i = 0; i < attempts; i++) {
+    if (await canListen(host, port)) return true;
+    log(`waiting for ${host}:${port} to free (${i + 1}/${attempts})...`);
+    await sleep(500);
   }
+  return false;
+}
+
+async function quickHealthOk() {
+  return new Promise((resolve) => {
+    const req = http.get(`http://${apiHost}:${apiPort}/api/v1/health`, (res) => {
+      res.resume();
+      resolve(res.statusCode === 200);
+    });
+    req.on("error", () => resolve(false));
+    req.setTimeout(1500, () => {
+      req.destroy();
+      resolve(false);
+    });
+  });
+}
+
+/**
+ * Hostinger often double-starts the entry during deploy/restart.
+ * Wait for old Nest to die, reuse if healthy, or bump port — never hard-fail immediately.
+ */
+async function resolveApiListen() {
+  if (await canListen(apiHost, apiPort)) {
+    return { spawnApi: true };
+  }
+
+  log(`API port ${apiHost}:${apiPort} busy — waiting for previous instance...`);
+  if (await waitUntilPortFree(apiHost, apiPort, 40)) {
+    return { spawnApi: true };
+  }
+
+  if (await quickHealthOk()) {
+    log(`Reusing healthy Nest already on ${apiHost}:${apiPort} (skip spawn)`);
+    return { spawnApi: false };
+  }
+
+  for (let i = 1; i <= 8; i++) {
+    const candidate = String(Number(apiPort) + i);
+    if (candidate === publicPort) continue;
+    if (await canListen(apiHost, candidate)) {
+      log(`Switching API_INTERNAL_PORT ${apiPort} → ${candidate}`);
+      apiPort = candidate;
+      return { spawnApi: true };
+    }
+  }
+
+  fail(`No free API port available near ${apiPort}`);
 }
 
 /** Hold Hostinger public PORT immediately so nginx does not 504 while Nest boots. */
@@ -315,28 +367,37 @@ async function main() {
   }
 
   resolveApiPort();
-  await assertPortsFree();
+  const { spawnApi } = await resolveApiListen();
 
   // Bind public PORT first — Hostinger/nginx 504 if nothing listens during Nest boot
   let placeholder = null;
   try {
     placeholder = await startPlaceholder();
   } catch (err) {
-    fail(`Cannot bind public PORT ${publicPort}: ${err instanceof Error ? err.message : err}`);
+    logErr(`Public PORT ${publicPort} busy — waiting for previous web/placeholder...`);
+    if (!(await waitUntilPortFree("0.0.0.0", publicPort, 40))) {
+      fail(`Cannot bind public PORT ${publicPort}: ${err instanceof Error ? err.message : err}`);
+    }
+    placeholder = await startPlaceholder();
   }
 
   const apiUrl = `http://${apiHost}:${apiPort}`;
 
-  register("api", {
-    command: process.execPath,
-    args: [apiMainJs],
-    env: {
-      PORT: apiPort,
-      HOST: apiHost,
-      ENABLE_WORKER: "false",
-    },
-    cwd: root,
-  });
+  if (spawnApi) {
+    register("api", {
+      command: process.execPath,
+      args: [apiMainJs],
+      env: {
+        PORT: apiPort,
+        HOST: apiHost,
+        ENABLE_WORKER: "false",
+      },
+      cwd: root,
+    });
+    spawnChild("api");
+  } else {
+    log("API child not spawned (reusing existing healthy process)");
+  }
 
   register("web", {
     command: process.execPath,
@@ -348,8 +409,6 @@ async function main() {
     },
     cwd: standaloneRoot,
   });
-
-  spawnChild("api");
 
   try {
     await waitForApi();
@@ -363,8 +422,7 @@ async function main() {
 
   log(`API healthy on ${apiUrl}`);
   await stopPlaceholder(placeholder);
-  // brief gap so OS releases the port before Next binds
-  await new Promise((r) => setTimeout(r, 300));
+  await sleep(400);
   spawnChild("web");
   log(`Web public on 0.0.0.0:${publicPort} (rewrites /api/v1 → ${apiUrl})`);
 }
