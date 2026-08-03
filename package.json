@@ -19,7 +19,11 @@
     "pm2:start": "pm2 start ecosystem.config.cjs",
     "pm2:reload": "pm2 reload ecosystem.config.cjs",
     "hostinger:shared:build-api": "bash scripts/hostinger-shared-build-api.sh",
-    "hostinger:shared:build-web": "bash scripts/hostinger-shared-build-web.sh"
+    "hostinger:shared:build-web": "bash scripts/hostinger-shared-build-web.sh",
+    "hostinger:single:build": "bash scripts/hostinger-single-build.sh",
+    "hostinger:single:start": "node scripts/hostinger-single-start.cjs",
+    "db:mysql:prepare": "node scripts/switch-prisma-mysql.cjs",
+    "db:bootstrap:prod": "pnpm --filter @cc/db exec tsx prisma/bootstrap-prod.ts"
   },
   "devDependencies": {
     "turbo": "^2.5.4",

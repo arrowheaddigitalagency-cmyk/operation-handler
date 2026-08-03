@@ -3,7 +3,9 @@
 **Target:** Hostinger **Business Web Hosting** or **Cloud** (Node.js Web Apps in hPanel).  
 **Not required:** VPS, PM2, continuous Worker process.
 
-**Prerequisite:** Your plan must allow **at least two Node.js Web Apps** (Web + API).
+**Prerequisite (two-app mode):** plan allows **≥ 2** Node.js Web Apps (Web + API on two hostnames).
+
+**Prerequisite (one-domain mode — your case):** only **1** Node app / no Node subdomain → use [`HOSTINGER_SINGLE_DOMAIN.md`](./HOSTINGER_SINGLE_DOMAIN.md) (`scripts/hostinger-single-start.cjs`). That is the supported Shared path when subdomains cannot run Node.
 
 ---
 

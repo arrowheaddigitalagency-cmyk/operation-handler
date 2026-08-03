@@ -33,8 +33,9 @@ module.exports = {
     },
     {
       name: "cc-web",
+      // Monorepo Next standalone puts server under apps/web/ inside standalone/
       cwd: "./apps/web/.next/standalone",
-      script: "server.js",
+      script: "apps/web/server.js",
       instances: 1,
       exec_mode: "fork",
       max_memory_restart: "512M",

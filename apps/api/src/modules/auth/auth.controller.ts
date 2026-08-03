@@ -17,6 +17,7 @@ import { Public } from "./public.decorator";
 import { loadEnv } from "@cc/config";
 import { RolesGuard } from "./roles.guard";
 import { RateLimit, RateLimitGuard } from "../../core/rate-limit.guard";
+import { jwtExpiresToMs } from "../../core/cron-auth";
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -133,7 +134,7 @@ export class AuthController {
       sameSite: "lax",
       secure: env.COOKIE_SECURE,
       path: "/",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: jwtExpiresToMs(env.JWT_EXPIRES_IN),
     });
   }
 }

@@ -12,8 +12,13 @@ corepack prepare pnpm@9.15.9 --activate
 pnpm install --frozen-lockfile
 pnpm db:generate
 pnpm --filter @cc/domain build
-pnpm --filter @cc/ui build
+# @cc/ui is consumed via Next transpilePackages — skip separate tsc emit
 API_URL="$API_URL" pnpm --filter @cc/web build
 bash scripts/hostinger-shared-prepare-standalone.sh
 
-echo "Web build OK — entry: apps/web/.next/standalone/apps/web/server.js"
+WEB_ENTRY="apps/web/.next/standalone/apps/web/server.js"
+if [ ! -f "$WEB_ENTRY" ]; then
+  echo "ERROR: missing $WEB_ENTRY after build"
+  exit 1
+fi
+echo "Web build OK — entry: $WEB_ENTRY"

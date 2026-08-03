@@ -36,14 +36,14 @@ export default function TrackPage() {
         Cars Compound
       </p>
       <h1 className="font-display mt-2 text-4xl font-extrabold">Track Your Repair</h1>
-      <form onSubmit={onSubmit} className="mt-8 flex gap-2">
+      <form onSubmit={onSubmit} className="mt-8 flex flex-col gap-2 sm:flex-row">
         <input
           value={trackingId}
           onChange={(e) => setTrackingId(e.target.value)}
           placeholder="CC-XXXXXX"
           className="field flex-1 uppercase"
         />
-        <button className="btn-primary">Track</button>
+        <button className="btn-primary sm:shrink-0">Track</button>
       </form>
       {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
       {data && (

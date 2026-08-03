@@ -93,7 +93,8 @@ export class StorageService {
       stream.end(file.buffer);
     });
 
-    const base = env.API_URL.replace(/\/$/, "");
+    // Public media URL must use APP_URL (browser-facing), never loopback API_URL
+    const base = env.APP_URL.replace(/\/$/, "");
     return {
       storageKey: filename,
       url: `${base}/api/v1/media/local/${filename}`,

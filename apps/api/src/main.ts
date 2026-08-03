@@ -33,9 +33,11 @@ async function bootstrap() {
   });
   app.setGlobalPrefix("api/v1");
 
-  await app.listen(env.PORT);
+  // HOST=127.0.0.1 for single-domain Hostinger launcher; default all interfaces
+  const host = process.env.HOST || "0.0.0.0";
+  await app.listen(env.PORT, host);
   // eslint-disable-next-line no-console
-  console.log(`API listening on http://localhost:${env.PORT}/api/v1`);
+  console.log(`API listening on http://${host}:${env.PORT}/api/v1`);
 }
 
 bootstrap().catch((err) => {
