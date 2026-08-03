@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Build Nest API + workspace deps for Hostinger Shared (API website).
 set -euo pipefail
-cd "$(dirname "$0")/.."
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/.."
 
-bash scripts/hostinger-ensure-pnpm.sh
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/hostinger-ensure-pnpm.sh"
 
 pnpm install --frozen-lockfile
 pnpm db:generate

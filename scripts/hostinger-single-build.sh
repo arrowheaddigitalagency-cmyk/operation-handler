@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Build Web + API for ONE Hostinger Node.js Web App (single domain).
-# Bake local rewrite target so Next proxies /api/v1 to the in-process Nest API.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/.."
 
 export API_URL="${API_URL:-http://127.0.0.1:4000}"
 
-bash scripts/hostinger-ensure-pnpm.sh
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/hostinger-ensure-pnpm.sh"
 
 pnpm install --frozen-lockfile
 pnpm db:generate
@@ -15,10 +16,9 @@ pnpm --filter @cc/config build
 pnpm --filter @cc/db build
 pnpm --filter @cc/notifications build
 pnpm --filter @cc/ai build
-# @cc/ui is transpilePackages in Next — no separate emit required
 API_URL="$API_URL" pnpm --filter @cc/api build
 API_URL="$API_URL" pnpm --filter @cc/web build
-bash scripts/hostinger-shared-prepare-standalone.sh
+bash "$SCRIPT_DIR/hostinger-shared-prepare-standalone.sh"
 
 WEB_ENTRY="apps/web/.next/standalone/apps/web/server.js"
 API_ENTRY="apps/api/dist/main.js"
