@@ -10,10 +10,22 @@ export API_URL="${API_URL:-http://127.0.0.1:4000}"
 source "$SCRIPT_DIR/hostinger-ensure-pnpm.sh"
 
 # Hostinger sets NODE_ENV=production during build → pnpm skips prisma/tsc/nest (devDeps).
-# Force full install for compile, then build apps in production mode.
 pnpm install --frozen-lockfile --prod=false
 
+# Auto-flip Prisma to MySQL when DATABASE_URL is mysql (prevents runtime crash / 504)
+if [[ "${DATABASE_URL:-}" == mysql://* ]]; then
+  echo "[hostinger] DATABASE_URL is MySQL — switching Prisma provider"
+  node "$SCRIPT_DIR/switch-prisma-mysql.cjs"
+fi
+
 pnpm db:generate
+
+# Apply migrations when MySQL URL is present (empty DB on first deploy)
+if [[ "${DATABASE_URL:-}" == mysql://* ]]; then
+  echo "[hostinger] Running prisma migrate deploy"
+  pnpm db:migrate:deploy || echo "[hostinger] WARN: migrate deploy failed — check DATABASE_URL / DB exists"
+fi
+
 pnpm --filter @cc/domain build
 pnpm --filter @cc/config build
 pnpm --filter @cc/db build

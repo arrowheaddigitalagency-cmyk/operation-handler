@@ -93,10 +93,35 @@ async function assertPortsFree() {
   if (!apiOk) {
     fail(`API port ${apiHost}:${apiPort} is already in use`);
   }
-  const webOk = await canListen("0.0.0.0", publicPort);
-  if (!webOk) {
-    fail(`Public PORT ${publicPort} is already in use`);
-  }
+}
+
+/** Hold Hostinger public PORT immediately so nginx does not 504 while Nest boots. */
+function startPlaceholder() {
+  return new Promise((resolve, reject) => {
+    const server = http.createServer((req, res) => {
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(
+        "<!doctype html><html><body style=\"font-family:sans-serif;padding:2rem;background:#0b0f14;color:#e8eef5\">" +
+          "<h1>Cars Compound is starting…</h1>" +
+          "<p>API is booting. Refresh in a few seconds.</p>" +
+          "</body></html>",
+      );
+    });
+    server.once("error", reject);
+    server.listen(Number(publicPort), "0.0.0.0", () => {
+      log(`placeholder listening on 0.0.0.0:${publicPort} (prevents nginx 504 during Nest boot)`);
+      resolve(server);
+    });
+  });
+}
+
+function stopPlaceholder(server) {
+  return new Promise((resolve) => {
+    if (!server) return resolve();
+    server.close(() => resolve());
+    // force close hung keep-alives
+    setTimeout(() => resolve(), 2000).unref?.();
+  });
 }
 
 function clearTimers() {
@@ -292,6 +317,14 @@ async function main() {
   resolveApiPort();
   await assertPortsFree();
 
+  // Bind public PORT first — Hostinger/nginx 504 if nothing listens during Nest boot
+  let placeholder = null;
+  try {
+    placeholder = await startPlaceholder();
+  } catch (err) {
+    fail(`Cannot bind public PORT ${publicPort}: ${err instanceof Error ? err.message : err}`);
+  }
+
   const apiUrl = `http://${apiHost}:${apiPort}`;
 
   register("api", {
@@ -311,7 +344,6 @@ async function main() {
     env: {
       PORT: publicPort,
       HOSTNAME: "0.0.0.0",
-      // Standalone rewrites are mostly build-time; keep runtime aligned
       API_URL: apiUrl,
     },
     cwd: standaloneRoot,
@@ -323,11 +355,16 @@ async function main() {
     await waitForApi();
   } catch (err) {
     logErr(err instanceof Error ? err.message : err);
+    logErr("Nest failed to become healthy — check DATABASE_URL, JWT_SECRET, CRON_SECRET, Prisma mysql");
+    await stopPlaceholder(placeholder);
     shutdown(1, "api-never-ready");
     return;
   }
 
   log(`API healthy on ${apiUrl}`);
+  await stopPlaceholder(placeholder);
+  // brief gap so OS releases the port before Next binds
+  await new Promise((r) => setTimeout(r, 300));
   spawnChild("web");
   log(`Web public on 0.0.0.0:${publicPort} (rewrites /api/v1 → ${apiUrl})`);
 }
