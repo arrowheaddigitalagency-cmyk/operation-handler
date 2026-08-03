@@ -1,0 +1,31 @@
+{
+  "name": "cars-compound",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "start:api": "pnpm --filter @cc/api start",
+    "start:worker": "pnpm --filter @cc/api start:worker",
+    "start:web": "pnpm --filter @cc/web start",
+    "db:generate": "pnpm --filter @cc/db generate",
+    "db:migrate": "pnpm --filter @cc/db migrate:dev",
+    "db:migrate:deploy": "pnpm --filter @cc/db migrate:deploy",
+    "db:push": "pnpm --filter @cc/db push",
+    "db:seed": "pnpm --filter @cc/db seed",
+    "db:studio": "pnpm --filter @cc/db studio",
+    "worker": "pnpm --filter @cc/api worker",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:reload": "pm2 reload ecosystem.config.cjs",
+    "hostinger:shared:build-api": "bash scripts/hostinger-shared-build-api.sh",
+    "hostinger:shared:build-web": "bash scripts/hostinger-shared-build-web.sh"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

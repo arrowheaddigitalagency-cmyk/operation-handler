@@ -1,0 +1,651 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Local default: SQLite (no Docker required).
+// Hostinger production: change provider to "mysql" and set DATABASE_URL accordingly.
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MANAGER
+  TECHNICIAN
+  RECEPTION
+  CUSTOMER
+}
+
+enum RepairStage {
+  RECEIVED
+  INSPECTION_COMPLETED
+  INSURANCE_APPROVAL
+  PARTS_ORDERED
+  PARTS_RECEIVED
+  BODY_REPAIR
+  PAINTING
+  DRYING_FINISHING
+  ASSEMBLY
+  QUALITY_INSPECTION
+  ROAD_TEST
+  READY_FOR_PICKUP
+  DELIVERED
+}
+
+enum AppointmentStatus {
+  REQUESTED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum EstimateStatus {
+  DRAFT
+  FINALIZED
+  REJECTED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  VOID
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum AnalysisStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  NEEDS_MORE_IMAGES
+  FAILED
+}
+
+enum CampaignType {
+  FOLLOW_UP
+  SEASONAL
+  MAINTENANCE
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  branches  Branch[]
+  users     User[]
+  settings  ShopSettings?
+  priceBands RepairPriceBand[]
+  leads     Lead[]
+}
+
+model ShopSettings {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  shopName       String       @default("Cars Compound")
+  portalCredit   String       @default("Portal by Arrowhead")
+  supportEmail   String?
+  supportPhone   String?
+  reportFooter   String       @default("AI assessment is advisory only. Final estimate confirmed after physical inspection at Cars Compound.")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model RepairPriceBand {
+  id               String       @id @default(cuid())
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id])
+  partKey          String
+  partLabel        String
+  severity         String
+  costMin          Float
+  costMax          Float
+  durationDaysMin  Int
+  durationDaysMax  Int
+  complexity       String       @default("medium")
+  currency         String       @default("USD")
+  active           Boolean      @default(true)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@unique([organizationId, partKey, severity])
+  @@index([partKey, severity])
+  @@index([active])
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  INSPECTION_SCHEDULED
+  CONVERTED
+  LOST
+}
+
+enum LeadSource {
+  AI_ASSESS
+  WEB_BOOK
+  MANUAL
+}
+
+model Lead {
+  id                 String          @id @default(cuid())
+  organizationId     String?
+  organization       Organization?   @relation(fields: [organizationId], references: [id])
+  branchId           String?
+  status             LeadStatus      @default(NEW)
+  source             LeadSource      @default(AI_ASSESS)
+  contactName        String
+  contactEmail       String
+  contactPhone       String
+  notes              String?
+  damageAnalysisId   String?         @unique
+  damageAnalysis     DamageAnalysis? @relation(fields: [damageAnalysisId], references: [id])
+  appointmentId      String?         @unique
+  repairCaseId       String?         @unique
+  assignedStaffId    String?
+  assignedStaff      User?           @relation("LeadAssignee", fields: [assignedStaffId], references: [id])
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([status])
+  @@index([contactEmail])
+  @@index([organizationId])
+  @@index([createdAt])
+}
+
+model Branch {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  code           String
+  timezone       String       @default("America/New_York")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  users          User[]
+  repairCases    RepairCase[]
+  appointments   Appointment[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+}
+
+model User {
+  id                 String            @id @default(cuid())
+  organizationId     String?
+  organization       Organization?     @relation(fields: [organizationId], references: [id])
+  branchId           String?
+  branch             Branch?           @relation(fields: [branchId], references: [id])
+  email              String            @unique
+  passwordHash       String
+  firstName          String
+  lastName           String
+  phone              String?
+  role               UserRole          @default(CUSTOMER)
+  emailOptIn         Boolean           @default(true)
+  smsOptIn           Boolean           @default(true)
+  marketingOptIn     Boolean           @default(true)
+  isActive           Boolean           @default(true)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  customerProfile    CustomerProfile?
+  stageEvents        RepairStageEvent[] @relation("StageChangedBy")
+  assignedRepairs    TechnicianAssignment[]
+  auditLogs          AuditLog[]
+  estimatesFinalized Estimate[]        @relation("EstimateFinalizedBy")
+  assignedLeads      Lead[]            @relation("LeadAssignee")
+  passwordResetTokens PasswordResetToken[]
+  supportRequests    SupportRequest[]  @relation("SupportRequester")
+  supportAssigned    SupportRequest[]  @relation("SupportAssignee")
+
+  @@index([role])
+  @@index([organizationId])
+  @@index([branchId])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+enum SupportStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model SupportRequest {
+  id             String        @id @default(cuid())
+  organizationId String?
+  customerUserId String
+  customerUser   User          @relation("SupportRequester", fields: [customerUserId], references: [id])
+  assignedStaffId String?
+  assignedStaff  User?         @relation("SupportAssignee", fields: [assignedStaffId], references: [id])
+  subject        String
+  body           String
+  status         SupportStatus @default(OPEN)
+  repairCaseId   String?
+  vehicleId      String?
+  staffReply     String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([customerUserId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model CustomerProfile {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  user      User      @relation(fields: [userId], references: [id])
+  notes     String?  
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  vehicles  Vehicle[]
+  appointments Appointment[]
+  repairCases  RepairCase[]
+  damageAnalyses DamageAnalysis[]
+}
+
+model Vehicle {
+  id               String    @id @default(cuid())
+  customerId       String
+  customer         CustomerProfile @relation(fields: [customerId], references: [id])
+  make             String
+  model            String
+  year             Int
+  vin              String?
+  registrationNumber String?
+  engineType       String?
+  color            String?
+  mileage          Int?
+  paintCode        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+  repairCases      RepairCase[]
+  appointments     Appointment[]
+  maintenanceReminders MaintenanceReminder[]
+
+  @@index([customerId])
+  @@index([vin])
+  @@index([registrationNumber])
+}
+
+model Appointment {
+  id               String            @id @default(cuid())
+  branchId         String?
+  branch           Branch?           @relation(fields: [branchId], references: [id])
+  customerId       String
+  customer         CustomerProfile   @relation(fields: [customerId], references: [id])
+  vehicleId        String?
+  vehicle          Vehicle?          @relation(fields: [vehicleId], references: [id])
+  damageAnalysisId String?
+  damageAnalysis   DamageAnalysis?   @relation(fields: [damageAnalysisId], references: [id])
+  scheduledAt      DateTime
+  status           AppointmentStatus @default(REQUESTED)
+  notes            String?          
+  contactName      String?
+  contactEmail     String?
+  contactPhone     String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  repairCase       RepairCase?
+
+  @@index([scheduledAt])
+  @@index([status])
+  @@index([customerId])
+}
+
+model DamageAnalysis {
+  id             String         @id @default(cuid())
+  reportId       String         @unique
+  customerId     String?
+  customer       CustomerProfile? @relation(fields: [customerId], references: [id])
+  guestName      String?
+  guestEmail     String?
+  guestPhone     String?
+  status         AnalysisStatus @default(PENDING)
+  provider       String
+  modelVersion   String?
+  resultJson     Json?
+  pricedJson     Json?
+  errorMessage   String?
+  disclaimer     String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  images         DamageImage[]
+  appointments   Appointment[]
+  lead           Lead?
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([reportId])
+}
+
+model DamageImage {
+  id         String          @id @default(cuid())
+  analysisId String
+  analysis   DamageAnalysis  @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  storageKey String
+  url        String         
+  mimeType   String
+  sizeBytes  Int
+  createdAt  DateTime        @default(now())
+
+  @@index([analysisId])
+}
+
+model RepairCase {
+  id                   String       @id @default(cuid())
+  trackingId           String       @unique
+  branchId             String?
+  branch               Branch?      @relation(fields: [branchId], references: [id])
+  customerId           String
+  customer             CustomerProfile @relation(fields: [customerId], references: [id])
+  vehicleId            String
+  vehicle              Vehicle      @relation(fields: [vehicleId], references: [id])
+  appointmentId        String?      @unique
+  appointment          Appointment? @relation(fields: [appointmentId], references: [id])
+  currentStage         RepairStage  @default(RECEIVED)
+  progressPercent      Int          @default(0)
+  insuranceApplicable  Boolean      @default(false)
+  insuranceCompany     String?
+  expectedCompletionAt DateTime?
+  technicianNotes      String?     
+  damageType           String?
+  workPerformed        String?     
+  partsReplaced        String?     
+  partsRepaired        String?     
+  paintCodeUsed        String?
+  costTotal            Decimal?    
+  completedAt          DateTime?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  deletedAt            DateTime?
+  stageEvents          RepairStageEvent[]
+  photos               RepairPhoto[]
+  documents            Document[]
+  estimates            Estimate[]
+  invoices             Invoice[]
+  warranties           Warranty[]
+  assignments          TechnicianAssignment[]
+  campaignEnrollments  CampaignEnrollment[]
+
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([currentStage])
+  @@index([branchId])
+}
+
+model RepairStageEvent {
+  id           String      @id @default(cuid())
+  repairCaseId String
+  repairCase   RepairCase  @relation(fields: [repairCaseId], references: [id], onDelete: Cascade)
+  fromStage    RepairStage?
+  toStage      RepairStage
+  notes        String?
+  /// When false, notes are staff-only (hidden from portal / public track)
+  visibleToCustomer Boolean @default(true)
+  progressPercent Int
+  expectedCompletionAt DateTime?
+  changedById  String?
+  changedBy    User?       @relation("StageChangedBy", fields: [changedById], references: [id])
+  createdAt    DateTime    @default(now())
+
+  @@index([repairCaseId])
+  @@index([createdAt])
+}
+
+model RepairPhoto {
+  id           String     @id @default(cuid())
+  repairCaseId String
+  repairCase   RepairCase @relation(fields: [repairCaseId], references: [id], onDelete: Cascade)
+  stage        RepairStage?
+  storageKey   String
+  url          String    
+  caption      String?
+  createdAt    DateTime   @default(now())
+  deletedAt    DateTime?
+
+  @@index([repairCaseId])
+}
+
+model TechnicianAssignment {
+  id           String     @id @default(cuid())
+  repairCaseId String
+  repairCase   RepairCase @relation(fields: [repairCaseId], references: [id], onDelete: Cascade)
+  technicianId String
+  technician   User       @relation(fields: [technicianId], references: [id])
+  assignedAt   DateTime   @default(now())
+  active       Boolean    @default(true)
+
+  @@index([repairCaseId])
+  @@index([technicianId])
+}
+
+model Estimate {
+  id             String         @id @default(cuid())
+  repairCaseId   String
+  repairCase     RepairCase     @relation(fields: [repairCaseId], references: [id], onDelete: Cascade)
+  status         EstimateStatus @default(DRAFT)
+  laborTotal     Decimal        @default(0)
+  partsTotal     Decimal        @default(0)
+  taxTotal       Decimal        @default(0)
+  grandTotal     Decimal        @default(0)
+  currency       String         @default("USD")
+  notes          String?       
+  lineItemsJson  Json?
+  finalizedAt    DateTime?
+  finalizedById  String?
+  finalizedBy    User?          @relation("EstimateFinalizedBy", fields: [finalizedById], references: [id])
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([repairCaseId])
+  @@index([status])
+}
+
+model Invoice {
+  id           String        @id @default(cuid())
+  repairCaseId String
+  repairCase   RepairCase    @relation(fields: [repairCaseId], references: [id], onDelete: Cascade)
+  number       String        @unique
+  status       InvoiceStatus @default(DRAFT)
+  subtotal     Decimal      
+  taxTotal     Decimal       @default(0)
+  grandTotal   Decimal      
+  currency     String        @default("USD")
+  issuedAt     DateTime?
+  pdfUrl       String?      
+  lineItemsJson Json?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([repairCaseId])
+}
+
+model Warranty {
+  id           String     @id @default(cuid())
+  repairCaseId String
+  repairCase   RepairCase @relation(fields: [repairCaseId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?   
+  startsAt     DateTime
+  endsAt       DateTime
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([repairCaseId])
+  @@index([endsAt])
+}
+
+model Document {
+  id           String     @id @default(cuid())
+  repairCaseId String
+  repairCase   RepairCase @relation(fields: [repairCaseId], references: [id], onDelete: Cascade)
+  title        String
+  storageKey   String
+  url          String    
+  mimeType     String
+  createdAt    DateTime   @default(now())
+  deletedAt    DateTime?
+
+  @@index([repairCaseId])
+}
+
+model MaintenanceRule {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  intervalType String
+  intervalValue Int
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  reminders    MaintenanceReminder[]
+}
+
+model MaintenanceReminder {
+  id           String          @id @default(cuid())
+  vehicleId    String
+  vehicle      Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  ruleId       String
+  rule         MaintenanceRule @relation(fields: [ruleId], references: [id])
+  dueAt        DateTime?
+  dueMileage   Int?
+  lastServiceAt DateTime?
+  sentAt       DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@index([vehicleId])
+  @@index([dueAt])
+  @@index([ruleId])
+}
+
+model Campaign {
+  id          String       @id @default(cuid())
+  code        String       @unique
+  name        String
+  type        CampaignType
+  active      Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  steps       CampaignStep[]
+  enrollments CampaignEnrollment[]
+}
+
+model CampaignStep {
+  id              String   @id @default(cuid())
+  campaignId      String
+  campaign        Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  offsetDays      Int
+  channel         NotificationChannel @default(EMAIL)
+  templateKey     String
+  subject         String?
+  bodyTemplate    String  
+  sortOrder       Int      @default(0)
+
+  @@index([campaignId])
+}
+
+model CampaignEnrollment {
+  id           String     @id @default(cuid())
+  campaignId   String
+  campaign     Campaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  repairCaseId String
+  repairCase   RepairCase @relation(fields: [repairCaseId], references: [id], onDelete: Cascade)
+  anchorAt     DateTime
+  completedAt  DateTime?
+  createdAt    DateTime   @default(now())
+
+  @@unique([campaignId, repairCaseId])
+  @@index([anchorAt])
+}
+
+model NotificationOutbox {
+  id            String              @id @default(cuid())
+  channel       NotificationChannel
+  recipient     String
+  subject       String?
+  body          String             
+  templateKey   String?
+  idempotencyKey String             @unique
+  status        OutboxStatus        @default(PENDING)
+  attempts      Int                 @default(0)
+  lastError     String?            
+  scheduledFor  DateTime            @default(now())
+  sentAt        DateTime?
+  metaJson      Json?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  logs          NotificationLog[]
+
+  @@index([status, scheduledFor])
+}
+
+model NotificationLog {
+  id        String             @id @default(cuid())
+  outboxId  String
+  outbox    NotificationOutbox @relation(fields: [outboxId], references: [id], onDelete: Cascade)
+  status    OutboxStatus
+  detail    String?           
+  createdAt DateTime           @default(now())
+
+  @@index([outboxId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String
+  entityType String
+  entityId   String?
+  metaJson   Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@index([actorId])
+}
+
+model JobLock {
+  id        String   @id
+  lockedAt  DateTime @default(now())
+  lockedBy  String
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}

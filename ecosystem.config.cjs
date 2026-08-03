@@ -1,0 +1,52 @@
+module.exports = {
+  apps: [
+    {
+      name: "cc-api",
+      cwd: "./",
+      script: "apps/api/dist/main.js",
+      instances: 1,
+      exec_mode: "fork",
+      max_memory_restart: "512M",
+      env: {
+        NODE_ENV: "production",
+      },
+      error_file: "./logs/api-error.log",
+      out_file: "./logs/api-out.log",
+      merge_logs: true,
+      time: true,
+    },
+    {
+      name: "cc-worker",
+      cwd: "./",
+      script: "apps/api/dist/worker.js",
+      instances: 1,
+      exec_mode: "fork",
+      max_memory_restart: "384M",
+      env: {
+        NODE_ENV: "production",
+        ENABLE_WORKER: "true",
+      },
+      error_file: "./logs/worker-error.log",
+      out_file: "./logs/worker-out.log",
+      merge_logs: true,
+      time: true,
+    },
+    {
+      name: "cc-web",
+      cwd: "./apps/web/.next/standalone",
+      script: "server.js",
+      instances: 1,
+      exec_mode: "fork",
+      max_memory_restart: "512M",
+      env: {
+        NODE_ENV: "production",
+        PORT: 3000,
+        HOSTNAME: "0.0.0.0",
+      },
+      error_file: "./logs/web-error.log",
+      out_file: "./logs/web-out.log",
+      merge_logs: true,
+      time: true,
+    },
+  ],
+};

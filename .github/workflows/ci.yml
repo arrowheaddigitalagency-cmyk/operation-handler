@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @cc/domain build
+      - run: pnpm --filter @cc/config build
+      - run: pnpm --filter @cc/notifications build
+      - run: pnpm --filter @cc/ai build
+      - name: Generate Prisma client
+        working-directory: packages/db
+        run: pnpm generate
+        env:
+          DATABASE_URL: file:./ci.db
+      - run: pnpm --filter @cc/db build
+        env:
+          DATABASE_URL: file:./ci.db
+      - run: pnpm --filter @cc/api exec tsc -p tsconfig.json --noEmit
+      - run: pnpm --filter @cc/web exec tsc -p tsconfig.json --noEmit
+      - name: Build API
+        run: pnpm --filter @cc/api build
+      - name: Build Web
+        run: pnpm --filter @cc/web build
+        env:
+          API_URL: http://localhost:4000
+          NEXT_PUBLIC_API_URL: http://localhost:4000
