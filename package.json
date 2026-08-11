@@ -9,6 +9,7 @@
     "build:turbo": "turbo run build",
     "lint": "turbo run lint",
     "start": "pnpm --filter @cc/api start",
+    "start:railway": "mkdir -p /data && pnpm db:push && if [ \"$ALLOW_DEMO_SEED\" = \"1\" ]; then pnpm db:seed; fi && pnpm --filter @cc/api start",
     "start:api": "pnpm --filter @cc/api start",
     "start:worker": "pnpm --filter @cc/api start:worker",
     "start:web": "pnpm --filter @cc/web start",

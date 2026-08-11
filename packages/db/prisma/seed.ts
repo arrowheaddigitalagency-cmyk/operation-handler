@@ -4,9 +4,9 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  if (process.env.NODE_ENV === "production") {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEMO_SEED !== "1") {
     console.error(
-      "Refusing to seed in NODE_ENV=production. Use staging or create admin users manually.",
+      "Refusing to seed in NODE_ENV=production. Set ALLOW_DEMO_SEED=1 for demo hosts, or use bootstrap-prod.",
     );
     process.exit(1);
   }
