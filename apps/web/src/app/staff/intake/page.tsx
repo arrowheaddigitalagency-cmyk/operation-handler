@@ -99,6 +99,7 @@ function IntakeForm() {
           {appointments.map((a) => (
             <option key={a.id} value={a.id} className="bg-[var(--panel)]">
               {a.contactName} · {new Date(a.scheduledAt).toLocaleString()}
+              {a.repairCase?.trackingId ? ` · ${a.repairCase.trackingId}` : ""}
             </option>
           ))}
         </select>
@@ -116,7 +117,13 @@ function IntakeForm() {
             </option>
           ))}
         </select>
-        <select name="vehicleId" required className="field">
+        <select
+          name="vehicleId"
+          required
+          className="field"
+          defaultValue={appointments.find((a) => a.id === appointmentId)?.vehicleId ?? ""}
+          key={`${customerId}-${appointmentId}-${vehicles.length}`}
+        >
           <option value="">Select vehicle</option>
           {vehicles.map((v) => (
             <option key={v.id} value={v.id} className="bg-[var(--panel)]">

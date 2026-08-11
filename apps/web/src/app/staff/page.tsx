@@ -160,6 +160,7 @@ export default function StaffPage() {
                 <div className="font-medium">{a.contactName}</div>
                 <div className="text-[var(--steel)]">
                   {new Date(a.scheduledAt).toLocaleString()} · {a.status}
+                  {a.repairCase?.trackingId ? ` · ${a.repairCase.trackingId}` : ""}
                 </div>
               </div>
             ))}

@@ -1,12 +1,16 @@
 import type { NextConfig } from "next";
 
 const API_UPSTREAM = process.env.API_URL ?? "http://localhost:4000";
+// Vercel uses its own output; standalone is for Hostinger/Docker self-host.
+const isVercel = Boolean(process.env.VERCEL);
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  ...(isVercel ? {} : { output: "standalone" as const }),
   poweredByHeader: false,
   compress: true,
   transpilePackages: ["@cc/ui", "@cc/domain"],
+  // Cloudflare quick tunnels hit Next from a different host in dev
+  allowedDevOrigins: ["*.trycloudflare.com", "*.loca.lt"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },

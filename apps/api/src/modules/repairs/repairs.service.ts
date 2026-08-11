@@ -139,6 +139,17 @@ export class RepairsService {
     },
     actorId: string,
   ) {
+    if (dto.appointmentId) {
+      const existing = await this.prisma.repairCase.findUnique({
+        where: { appointmentId: dto.appointmentId },
+        include: { customer: { include: { user: true } }, vehicle: true },
+      });
+      if (existing) {
+        // Web booking already opened the case — return existing tracking ID
+        return existing;
+      }
+    }
+
     const trackingId = await this.uniqueTrackingId();
     const branch = await this.prisma.branch.findFirst();
     const percent = progressPercent(RepairStage.RECEIVED, dto.insuranceApplicable);

@@ -73,14 +73,26 @@ export default function LoginPage() {
 
       {mode === "email" ? (
         <form onSubmit={onEmail} className="panel mt-6 space-y-3 rounded-sm p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
-          <input name="email" type="email" required placeholder="Email" className="field" autoComplete="username" />
+          {/* type=text: browsers sometimes reject *.local emails on type=email */}
+          <input
+            name="email"
+            type="text"
+            inputMode="email"
+            required
+            placeholder="Email"
+            className="field"
+            autoComplete="username"
+            defaultValue={process.env.NODE_ENV !== "production" ? "admin@carscompound.local" : undefined}
+          />
           <input
             name="password"
             type="password"
             required
+            minLength={8}
             placeholder="Password"
             className="field"
             autoComplete="current-password"
+            defaultValue={process.env.NODE_ENV !== "production" ? "ChangeMe123!" : undefined}
           />
           <button className="btn-primary w-full" disabled={loading}>
             {loading ? "Signing in…" : "Sign in"}
@@ -113,9 +125,16 @@ export default function LoginPage() {
           </Link>
         </p>
         {process.env.NODE_ENV !== "production" && (
-          <p className="pt-2 text-[10px] opacity-70">
-            Local demo accounts are listed in the project README (not shown in production).
-          </p>
+          <div className="mt-3 rounded-sm border border-[var(--line)] bg-black/20 px-3 py-2 text-[11px] leading-relaxed text-[var(--mist)]">
+            <p className="font-semibold text-[var(--copper-hot)]">Local demo (dev only)</p>
+            <p className="mt-1">
+              Admin: <code className="text-[var(--mist)]">admin@carscompound.local</code>
+            </p>
+            <p>
+              Password: <code className="text-[var(--mist)]">ChangeMe123!</code>
+            </p>
+            <p className="mt-1 opacity-70">Open via http://localhost:3000/login (not 127.0.0.1 — VPN can break it).</p>
+          </div>
         )}
       </div>
     </div>

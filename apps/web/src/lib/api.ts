@@ -26,9 +26,21 @@ export function setStoredToken(token: string | null) {
 
 function friendlyError(text: string, status: number): string {
   try {
-    const json = JSON.parse(text) as { message?: string | string[] | { formErrors?: string[] } };
+    const json = JSON.parse(text) as {
+      message?: string | string[] | { formErrors?: string[]; fieldErrors?: Record<string, string[]> };
+    };
     if (typeof json.message === "string") return json.message;
     if (Array.isArray(json.message)) return json.message.join(", ");
+    if (json.message && typeof json.message === "object") {
+      const field = json.message.fieldErrors
+        ? Object.entries(json.message.fieldErrors)
+            .flatMap(([k, v]) => (v?.length ? v.map((m) => `${k}: ${m}`) : []))
+            .join("; ")
+        : "";
+      const form = json.message.formErrors?.join("; ") ?? "";
+      const combined = [form, field].filter(Boolean).join("; ");
+      if (combined) return combined;
+    }
   } catch {
     // fall through
   }

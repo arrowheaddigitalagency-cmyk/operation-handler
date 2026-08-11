@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
-import { Syne, Manrope } from "next/font/google";
+import { Montserrat, Manrope } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
+import { SmoothScroll } from "@/components/smooth-scroll";
+import { SitePreloader } from "@/components/site-preloader";
+import { AiAssessWidget } from "@/components/ai-assess-widget";
 
-const syne = Syne({
+const montserrat = Montserrat({
   subsets: ["latin"],
-  variable: "--font-syne",
+  variable: "--font-montserrat",
   display: "swap",
 });
 
@@ -16,24 +20,23 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Cars Compound — Smart Customer Experience",
+  title: "Cars Compound — Expert Auto Care in Marietta, GA",
   description:
-    "AI damage assessment, live repair tracking, and digital vehicle history for Cars Compound.",
+    "Collision repair, paint & body, ADAS calibration, detailing, and AI damage assessment with live repair tracking in Marietta, GA.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${syne.variable} ${manrope.variable}`}>
-      <body
-        style={
-          {
-            "--font-display": "var(--font-syne), sans-serif",
-            "--font-body": "var(--font-manrope), sans-serif",
-          } as React.CSSProperties
-        }
-      >
-        <SiteHeader />
-        <main>{children}</main>
+    <html lang="en" className={`${montserrat.variable} ${manrope.variable}`} suppressHydrationWarning>
+      {/* suppressHydrationWarning: browser extensions (e.g. wotdisconnected) mutate <body> before hydrate */}
+      <body suppressHydrationWarning>
+        <SitePreloader />
+        <SmoothScroll>
+          <SiteHeader />
+          <main>{children}</main>
+          <SiteFooter />
+          <AiAssessWidget />
+        </SmoothScroll>
       </body>
     </html>
   );

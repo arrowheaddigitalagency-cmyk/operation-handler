@@ -1,58 +1,66 @@
-"use client";
-
 import Link from "next/link";
-
-const SERVICES = [
-  {
-    title: "Collision & body repair",
-    body: "Structural and cosmetic restoration with OEM-aware methods, from bumper covers to full panel replacement.",
-  },
-  {
-    title: "Paint & refinish",
-    body: "Color-matched clearcoat work with documented paint codes stored in your vehicle history.",
-  },
-  {
-    title: "AI damage assessment",
-    body: "Upload photos for an advisory report priced from Cars Compound shop bands — then book a physical inspection.",
-  },
-  {
-    title: "Live repair tracking",
-    body: "Secure Tracking IDs with stage-by-stage progress, photos, and notifications until delivery.",
-  },
-  {
-    title: "Digital vehicle history",
-    body: "Permanent records of repairs, warranties, invoices, and maintenance for every vehicle in your garage.",
-  },
-  {
-    title: "Lifetime care reminders",
-    body: "Automated oil, brake, alignment, and custom maintenance reminders after your vehicle leaves the bay.",
-  },
-];
+import { IMAGES, SERVICES, SITE } from "@/content/site";
 
 export default function ServicesPage() {
   return (
-    <div className="mx-auto max-w-5xl px-4 py-14">
-      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--copper-hot)]">Cars Compound</p>
-      <h1 className="font-display mt-2 text-4xl font-extrabold md:text-5xl">Services</h1>
-      <p className="mt-3 max-w-2xl text-[var(--steel)]">
-        Premium body repair with a fully digital customer experience — from first photo to lifetime care.
-      </p>
-      <div className="mt-12 grid gap-6 md:grid-cols-2">
-        {SERVICES.map((s) => (
-          <div key={s.title} className="panel rounded-sm p-6">
-            <h2 className="font-display text-xl font-semibold">{s.title}</h2>
-            <p className="mt-3 text-sm leading-relaxed text-[var(--steel)]">{s.body}</p>
+    <div className="site-light">
+      <section className="relative overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url('${IMAGES.bay}')` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[var(--paper)]/70 via-[var(--paper)]/88 to-[var(--paper)]" />
+        <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 md:py-24">
+          <p className="eyebrow">Services</p>
+          <h1 className="font-display mt-3 max-w-3xl text-4xl font-extrabold tracking-tight md:text-6xl">
+            Best quality automotive care
+          </h1>
+          <p className="mt-5 max-w-2xl text-[var(--muted)] leading-relaxed md:text-lg">
+            From ADAS calibration and complete collision repair to detailing, AC, and digital tools—
+            {SITE.name} is your one-stop shop in {SITE.location}.
+          </p>
+        </div>
+      </section>
+
+      <section className="section-pad section-ambient !pt-4 md:!pt-8">
+        <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {SERVICES.map((s) => (
+              <Link key={s.title} href={s.href} className="service-tile group min-h-[300px] md:min-h-[340px]">
+                <div className="service-tile-bg" style={{ backgroundImage: `url('${s.image}')` }} />
+                <div className="service-tile-scrim" />
+                <div className="service-tile-body">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[var(--copper-hot)]">
+                    Explore
+                  </p>
+                  <h2 className="font-display mt-2 text-xl font-semibold leading-snug">{s.title}</h2>
+                  <p className="mt-3 text-sm leading-relaxed text-white/75">{s.body}</p>
+                  <span className="mt-4 inline-block text-xs font-bold uppercase tracking-wider text-white/90">
+                    Continue →
+                  </span>
+                </div>
+              </Link>
+            ))}
           </div>
-        ))}
-      </div>
-      <div className="mt-12 flex flex-wrap gap-3">
-        <Link href="/assess" className="btn-primary">
-          Start AI assessment
-        </Link>
-        <Link href="/book" className="btn-ghost">
-          Book inspection
-        </Link>
-      </div>
+
+          <div className="surface mt-14 rounded-xl p-7 md:flex md:items-center md:justify-between md:gap-8 md:p-10">
+            <div>
+              <h2 className="font-display text-2xl font-bold md:text-3xl">Ready to schedule?</h2>
+              <p className="mt-2 text-sm text-[var(--muted)] md:text-base">
+                Book an inspection or start with an AI advisory assessment.
+              </p>
+            </div>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row md:mt-0">
+              <Link href="/assess" className="btn-primary">
+                AI Damage Assess
+              </Link>
+              <Link href="/book" className="btn-ghost">
+                Book appointment
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

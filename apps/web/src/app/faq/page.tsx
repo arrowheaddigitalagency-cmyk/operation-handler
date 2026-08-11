@@ -1,41 +1,47 @@
-"use client";
-
-const FAQS = [
-  {
-    q: "Is the AI estimate the final price?",
-    a: "No. AI pricing uses Cars Compound configurable shop bands and is advisory only. Final cost is confirmed after physical inspection.",
-  },
-  {
-    q: "How do I track my repair?",
-    a: "Use your Tracking ID on the Track page, or sign in to the Customer Portal with email/password or tracking credentials.",
-  },
-  {
-    q: "Will I get SMS updates?",
-    a: "Email is primary. SMS is sent when configured and when you have opted in / provided a phone number.",
-  },
-  {
-    q: "What if AI confidence is low?",
-    a: "We ask for clearer photos from more angles instead of issuing an unreliable report. You can also book an inspection directly.",
-  },
-  {
-    q: "Can I see past repairs?",
-    a: "Yes. Your digital garage keeps permanent vehicle history, warranties, invoices, and documents.",
-  },
-];
+import Link from "next/link";
+import { FAQS, IMAGES } from "@/content/site";
 
 export default function FaqPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-14">
-      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--copper-hot)]">Cars Compound</p>
-      <h1 className="font-display mt-2 text-4xl font-extrabold">FAQ</h1>
-      <div className="mt-10 space-y-6">
-        {FAQS.map((f) => (
-          <div key={f.q} className="panel rounded-sm p-5">
-            <h2 className="font-display text-lg font-semibold">{f.q}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-[var(--steel)]">{f.a}</p>
+    <div className="site-light">
+      <section className="relative overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url('${IMAGES.showroom}')` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[var(--paper)]/75 via-[var(--paper)]/90 to-[var(--paper)]" />
+        <div className="relative mx-auto max-w-3xl px-4 py-16 sm:px-6 md:py-24">
+          <p className="eyebrow">FAQ</p>
+          <h1 className="font-display mt-3 text-4xl font-extrabold tracking-tight md:text-6xl">
+            Answers before you roll in
+          </h1>
+          <p className="mt-5 text-[var(--muted)] md:text-lg">
+            Common questions about ADAS, AI estimates, tracking, and visiting our Marietta shop.
+          </p>
+        </div>
+      </section>
+
+      <section className="section-pad section-ambient !pt-4 md:!pt-8">
+        <div className="relative mx-auto max-w-3xl px-4 sm:px-6">
+          <div className="space-y-4">
+            {FAQS.map((f) => (
+              <div key={f.q} className="surface rounded-xl p-5 md:p-6">
+                <h2 className="font-display text-lg font-semibold md:text-xl">{f.q}</h2>
+                <p className="mt-2 text-sm leading-relaxed text-[var(--muted)] md:text-[15px]">{f.a}</p>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+
+          <div className="mt-12 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Link href="/contact" className="btn-primary">
+              Still have questions?
+            </Link>
+            <Link href="/book" className="btn-ghost">
+              Book appointment
+            </Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
