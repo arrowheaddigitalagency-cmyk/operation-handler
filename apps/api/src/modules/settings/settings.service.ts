@@ -6,28 +6,34 @@ export class SettingsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getShop() {
-    const org = await this.prisma.organization.findFirst();
-    if (!org) {
-      return {
-        shopName: "Cars Compound",
-        portalCredit: "Portal by Arrowhead",
-        supportEmail: null,
-        supportPhone: null,
-        reportFooter:
-          "AI assessment is advisory only. Final estimate confirmed after physical inspection at Cars Compound.",
-      };
+    const fallback = {
+      shopName: "Cars Compound",
+      portalCredit: "Portal by Arrowhead",
+      supportEmail: null as string | null,
+      supportPhone: null as string | null,
+      reportFooter:
+        "AI assessment is advisory only. Final estimate confirmed after physical inspection at Cars Compound.",
+    };
+    try {
+      const org = await this.prisma.organization.findFirst();
+      if (!org) return fallback;
+      let settings = await this.prisma.shopSettings.findUnique({ where: { organizationId: org.id } });
+      if (!settings) {
+        settings = await this.prisma.shopSettings.create({
+          data: {
+            organizationId: org.id,
+            shopName: org.name || "Cars Compound",
+            portalCredit: "Portal by Arrowhead",
+          },
+        });
+      }
+      return settings;
+    } catch (err) {
+      // Demo/prod boot before db:push — don't 500 the marketing site
+      // eslint-disable-next-line no-console
+      console.error("[settings.getShop] database not ready", err);
+      return fallback;
     }
-    let settings = await this.prisma.shopSettings.findUnique({ where: { organizationId: org.id } });
-    if (!settings) {
-      settings = await this.prisma.shopSettings.create({
-        data: {
-          organizationId: org.id,
-          shopName: org.name || "Cars Compound",
-          portalCredit: "Portal by Arrowhead",
-        },
-      });
-    }
-    return settings;
   }
 
   async updateShop(dto: Record<string, unknown>) {
