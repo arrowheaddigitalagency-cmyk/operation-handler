@@ -5,8 +5,10 @@
   "scripts": {
     "dev": "turbo run dev --parallel",
     "build": "bash scripts/hostinger-single-build.sh",
+    "build:api": "pnpm --filter @cc/domain build && pnpm --filter @cc/config build && pnpm --filter @cc/ai build && pnpm --filter @cc/notifications build && pnpm --filter @cc/db build && pnpm --filter @cc/api build",
     "build:turbo": "turbo run build",
     "lint": "turbo run lint",
+    "start": "pnpm --filter @cc/api start",
     "start:api": "pnpm --filter @cc/api start",
     "start:worker": "pnpm --filter @cc/api start:worker",
     "start:web": "pnpm --filter @cc/web start",
