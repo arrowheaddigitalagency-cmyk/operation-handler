@@ -99,19 +99,20 @@ export default function StaffSettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-14">
-      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--copper-hot)]">Admin</p>
-      <h1 className="font-display mt-2 text-4xl font-extrabold">Shop &amp; Price Bands</h1>
-      <p className="mt-2 text-sm text-[var(--steel)]">
-        AI detects damage only. Advisory dollars come from these configurable Cars Compound bands.
-      </p>
-      <Link href="/staff" className="mt-4 inline-block text-sm text-[var(--copper-hot)]">
-        ← Ops dashboard
-      </Link>
-      {message && <p className="mt-4 text-sm text-[var(--steel)]">{message}</p>}
+    <div className="staff-ops-page">
+      <header className="staff-ops-top">
+        <div>
+          <p className="staff-ops-kicker">Admin</p>
+          <h2 className="staff-ops-heading">Shop &amp; price bands</h2>
+          <p className="staff-ops-sub">
+            AI detects damage only. Advisory dollars come from these configurable Cars Compound bands.
+          </p>
+        </div>
+      </header>
+      {message && <p className="staff-ops-msg mb-4">{message}</p>}
 
       {shop && (
-        <form onSubmit={saveShop} className="panel mt-8 space-y-3 rounded-sm p-6">
+        <form onSubmit={saveShop} className="staff-ops-panel mb-6 space-y-3">
           <h2 className="font-display text-xl font-semibold">Shop branding</h2>
           <input name="shopName" defaultValue={shop.shopName} className="field" placeholder="Shop name" />
           <input

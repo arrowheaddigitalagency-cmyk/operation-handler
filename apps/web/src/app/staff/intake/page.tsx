@@ -75,21 +75,17 @@ function IntakeForm() {
   }
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-14">
-      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--copper-hot)]">Cars Compound</p>
-      <h1 className="font-display mt-2 text-4xl font-extrabold">Repair Intake</h1>
-      <p className="mt-2 text-sm text-[var(--steel)]">
-        Lead → inspection appointment → intake creates secure Tracking ID (CC-XXXXXX) and notifies the customer.
-      </p>
-      <div className="mt-3 flex gap-3 text-sm">
-        <Link href="/staff/leads" className="text-[var(--copper-hot)]">
-          ← AI Leads
-        </Link>
-        <Link href="/staff" className="text-[var(--copper-hot)]">
-          Ops dashboard
-        </Link>
-      </div>
-      <form onSubmit={onSubmit} className="panel mt-8 space-y-3 rounded-sm p-6">
+    <div className="staff-ops-page max-w-xl">
+      <header className="staff-ops-top">
+        <div>
+          <p className="staff-ops-kicker">Intake</p>
+          <h2 className="staff-ops-heading">Repair intake</h2>
+          <p className="staff-ops-sub">
+            Link an appointment, create / confirm the repair case, and keep the tracking ID in sync.
+          </p>
+        </div>
+      </header>
+      <form onSubmit={onSubmit} className="staff-ops-panel space-y-3">
         <select
           value={appointmentId}
           onChange={(e) => onPickAppointment(e.target.value)}

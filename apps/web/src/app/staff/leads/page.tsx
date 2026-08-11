@@ -64,26 +64,22 @@ export default function StaffLeadsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-14">
-      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--copper-hot)]">CRM</p>
-      <h1 className="font-display mt-2 text-4xl font-extrabold">AI Leads</h1>
-      <p className="mt-2 text-sm text-[var(--steel)]">
-        Workflow: NEW → CONTACTED → INSPECTION_SCHEDULED → CONVERTED (or LOST)
-      </p>
-      <div className="mt-4 flex gap-3 text-sm">
-        <Link href="/staff" className="text-[var(--copper-hot)]">
-          ← Ops dashboard
+    <div className="staff-ops-page">
+      <header className="staff-ops-top">
+        <div>
+          <p className="staff-ops-kicker">CRM</p>
+          <h2 className="staff-ops-heading">AI &amp; web leads</h2>
+          <p className="staff-ops-sub">
+            NEW → CONTACTED → INSPECTION_SCHEDULED → CONVERTED (or LOST)
+          </p>
+        </div>
+        <Link href="/staff/intake" className="btn-primary">
+          Intake
         </Link>
-        <Link href="/staff/intake" className="text-[var(--copper-hot)]">
-          Repair intake →
-        </Link>
-        <Link href="/staff/settings" className="text-[var(--copper-hot)]">
-          Price bands →
-        </Link>
-      </div>
-      {message && <p className="mt-4 text-sm text-[var(--steel)]">{message}</p>}
+      </header>
+      {message && <p className="staff-ops-msg mb-4">{message}</p>}
 
-      <div className="mt-8 space-y-3">
+      <div className="space-y-3">
         {leads.map((lead) => {
           const priced = lead.damageAnalysis?.pricedJson;
           return (
