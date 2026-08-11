@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { logout } from "@/lib/api";
 import { useRouter } from "next/navigation";
 
-const NAV = [
+const NAV: Array<{ href: string; label: string; exact?: boolean }> = [
   { href: "/staff", label: "Overview", exact: true },
   { href: "/staff/leads", label: "Leads" },
   { href: "/staff/intake", label: "Intake" },
   { href: "/staff/settings", label: "Settings" },
-] as const;
+];
 
 export function StaffShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
