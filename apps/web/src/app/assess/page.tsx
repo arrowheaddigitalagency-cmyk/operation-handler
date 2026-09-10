@@ -5,6 +5,10 @@ import Link from "next/link";
 import gsap from "gsap";
 import { AI_ESTIMATE_DISCLAIMER } from "@cc/domain";
 import { MechanicIcon } from "@/components/mechanic-icon";
+import { TextReveal } from "@/components/motion/text-reveal";
+import { Magnetic } from "@/components/motion/magnetic";
+import { TiltCard } from "@/components/motion/tilt-card";
+import { prefersReducedMotion } from "@/components/motion/motion-utils";
 
 type Analysis = {
   id: string;
@@ -70,12 +74,13 @@ export default function AssessPage() {
 
   useEffect(() => {
     const page = pageRef.current;
-    if (!page || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    gsap.from(".assess-hero-inner > *", {
-      y: 24,
+    if (!page || prefersReducedMotion()) return;
+    gsap.from(".assess-hero-seq", {
+      y: 28,
       opacity: 0,
-      duration: 0.7,
-      stagger: 0.08,
+      duration: 0.8,
+      stagger: 0.1,
+      delay: 0.12,
       ease: "power3.out",
     });
   }, []);
@@ -84,9 +89,11 @@ export default function AssessPage() {
     const el = panelRef.current;
     if (!el) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const body = el.querySelector(".assess-panel-body");
+    if (!body) return;
     gsap.fromTo(
-      el.querySelector(".assess-panel-body"),
-      { autoAlpha: 0, y: 18 },
+      body,
+      { autoAlpha: 0, y: 16 },
       { autoAlpha: 1, y: 0, duration: 0.4, ease: "power3.out" },
     );
   }, [step]);
@@ -195,23 +202,32 @@ export default function AssessPage() {
       <section className="assess-hero">
         <div className="assess-hero-lines" aria-hidden />
         <div className="assess-hero-glow" aria-hidden />
-        <div className="assess-hero-inner mx-auto max-w-6xl px-4 pb-10 pt-10 sm:px-6 sm:pb-12 sm:pt-14">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="assess-hero-grain" aria-hidden />
+        <div className="assess-hero-inner mx-auto max-w-6xl px-4 pb-12 pt-12 sm:px-6 sm:pb-16 sm:pt-16">
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex items-start gap-3 sm:gap-4">
-              <span className="assess-badge">
+              <span className="assess-hero-seq assess-badge">
                 <MechanicIcon className="h-5 w-5 ai-mech-spin" />
               </span>
               <div>
-                <p className="eyebrow !text-[var(--accent-hot)]">Cars Compound · AI Vision</p>
-                <h1 className="font-display mt-2 text-[clamp(2rem,5vw,3.4rem)] font-extrabold tracking-tight text-white">
-                  Instant Damage <span className="text-[var(--accent-hot)]">Assessment</span>
-                </h1>
-                <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/65 sm:text-base">
+                <p className="assess-hero-seq eyebrow flex items-center gap-3 !text-[var(--accent-hot)]">
+                  <span className="hero-rule" aria-hidden />
+                  Cars Compound · AI Vision
+                </p>
+                <TextReveal
+                  as="h1"
+                  immediate
+                  delay={0.08}
+                  text="Instant Damage"
+                  accent="Assessment"
+                  className="font-display mt-2 text-[clamp(2.15rem,5.4vw,3.7rem)] font-extrabold tracking-tight text-white"
+                />
+                <p className="assess-hero-seq mt-3 max-w-xl text-sm leading-relaxed text-white/65 sm:text-base">
                   Guided shop flow — vehicle, photos, contact — then a priced advisory report in minutes.
                 </p>
               </div>
             </div>
-            <div className="assess-hero-pills">
+            <div className="assess-hero-seq assess-hero-pills">
               <span>⏱ ~2 min</span>
               <span>📷 Up to 8 photos</span>
               <span>🛠 Shop-priced bands</span>
@@ -246,6 +262,7 @@ export default function AssessPage() {
           <div className="assess-panel">
             {loading && (
               <div className="assess-scan" aria-live="polite">
+                <div className="assess-scan-grid" />
                 <div className="assess-scan-line" />
                 <div className="assess-scan-card">
                   <MechanicIcon className="h-8 w-8 text-[var(--accent)] ai-mech-spin" />
@@ -494,22 +511,26 @@ export default function AssessPage() {
 
                       <div className="flex flex-col gap-2.5 pt-2 sm:flex-row">
                         {reportId && (
-                          <a
-                            href={`/api/v1/ai/reports/${reportId}/html`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="btn-primary btn-anim"
-                          >
-                            Download / Print Report
-                          </a>
+                          <Magnetic>
+                            <a
+                              href={`/api/v1/ai/reports/${reportId}/html`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="btn-primary btn-anim btn-sheen"
+                            >
+                              Download / Print Report
+                            </a>
+                          </Magnetic>
                         )}
                         {analysis && (
-                          <Link
-                            href={`/book?analysisId=${analysis.id}&reportId=${reportId ?? ""}&name=${encodeURIComponent(contact.name)}&email=${encodeURIComponent(contact.email)}&phone=${encodeURIComponent(contact.phone)}&make=${encodeURIComponent(contact.make)}&model=${encodeURIComponent(contact.model)}&year=${encodeURIComponent(contact.year)}`}
-                            className="btn-ghost btn-anim"
-                          >
-                            Book Inspection
-                          </Link>
+                          <Magnetic strength={7}>
+                            <Link
+                              href={`/book?analysisId=${analysis.id}&reportId=${reportId ?? ""}&name=${encodeURIComponent(contact.name)}&email=${encodeURIComponent(contact.email)}&phone=${encodeURIComponent(contact.phone)}&make=${encodeURIComponent(contact.make)}&model=${encodeURIComponent(contact.model)}&year=${encodeURIComponent(contact.year)}`}
+                              className="btn-ghost btn-anim"
+                            >
+                              Book Inspection
+                            </Link>
+                          </Magnetic>
                         )}
                       </div>
                     </div>
@@ -524,68 +545,80 @@ export default function AssessPage() {
 
               {step < 3 && (
                 <div className="assess-nav">
-                  <button
-                    type="button"
-                    className="btn-ghost btn-anim !w-auto"
-                    onClick={goBack}
-                    disabled={step === 0 || loading}
-                  >
-                    Back
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-primary btn-anim !w-auto min-w-[10rem]"
-                    onClick={goNext}
-                    disabled={!canNext || loading}
-                  >
-                    {step === 2 ? (loading ? "Analyzing…" : "Generate report") : "Continue"}
-                  </button>
+                  <Magnetic strength={6}>
+                    <button
+                      type="button"
+                      className="btn-ghost btn-anim !w-auto"
+                      onClick={goBack}
+                      disabled={step === 0 || loading}
+                    >
+                      Back
+                    </button>
+                  </Magnetic>
+                  <Magnetic>
+                    <button
+                      type="button"
+                      className="btn-primary btn-anim btn-sheen !w-auto min-w-[10rem]"
+                      onClick={goNext}
+                      disabled={!canNext || loading}
+                    >
+                      {step === 2 ? (loading ? "Analyzing…" : "Generate report") : "Continue"}
+                    </button>
+                  </Magnetic>
                 </div>
               )}
 
               {step === 3 && (
                 <div className="assess-nav">
-                  <button type="button" className="btn-ghost btn-anim !w-auto" onClick={goBack}>
-                    New assessment
-                  </button>
-                  <Link href="/" className="btn-primary btn-anim !w-auto">
-                    Back to home
-                  </Link>
+                  <Magnetic strength={6}>
+                    <button type="button" className="btn-ghost btn-anim !w-auto" onClick={goBack}>
+                      New assessment
+                    </button>
+                  </Magnetic>
+                  <Magnetic>
+                    <Link href="/" className="btn-primary btn-anim btn-sheen !w-auto">
+                      Back to home
+                    </Link>
+                  </Magnetic>
                 </div>
               )}
             </div>
           </div>
 
           <aside className="assess-aside">
-            <div className="assess-aside-card">
-              <p className="assess-aside-kicker">Live summary</p>
-              <h3>{vehicleLabel}</h3>
-              <ul>
-                <li>
-                  <span>Step</span>
-                  <strong>
-                    {step + 1} / {STEPS.length}
-                  </strong>
-                </li>
-                <li>
-                  <span>Photos</span>
-                  <strong>{files.length}</strong>
-                </li>
-                <li>
-                  <span>Contact</span>
-                  <strong>{contact.name || contact.email ? "Ready" : "Pending"}</strong>
-                </li>
-              </ul>
-            </div>
-            <div className="assess-aside-card soft">
-              <p className="assess-aside-kicker">Why it feels good</p>
-              <ul className="assess-aside-bullets">
-                <li>Short steps — no long form dump</li>
-                <li>Photo tips before you upload</li>
-                <li>Shop bands, not random AI prices</li>
-                <li>Book inspection in one tap after</li>
-              </ul>
-            </div>
+            <TiltCard max={4}>
+              <div className="assess-aside-card">
+                <p className="assess-aside-kicker">Live summary</p>
+                <h3>{vehicleLabel}</h3>
+                <ul>
+                  <li>
+                    <span>Step</span>
+                    <strong>
+                      {step + 1} / {STEPS.length}
+                    </strong>
+                  </li>
+                  <li>
+                    <span>Photos</span>
+                    <strong>{files.length}</strong>
+                  </li>
+                  <li>
+                    <span>Contact</span>
+                    <strong>{contact.name || contact.email ? "Ready" : "Pending"}</strong>
+                  </li>
+                </ul>
+              </div>
+            </TiltCard>
+            <TiltCard max={4}>
+              <div className="assess-aside-card soft">
+                <p className="assess-aside-kicker">Why it feels good</p>
+                <ul className="assess-aside-bullets">
+                  <li>Short steps — no long form dump</li>
+                  <li>Photo tips before you upload</li>
+                  <li>Shop bands, not random AI prices</li>
+                  <li>Book inspection in one tap after</li>
+                </ul>
+              </div>
+            </TiltCard>
           </aside>
         </div>
       </div>

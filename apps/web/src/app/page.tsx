@@ -5,11 +5,17 @@ import { TestimonialSlider } from "@/components/testimonial-slider";
 import { HomeHero } from "@/components/home-hero";
 import { AmbientBg } from "@/components/ambient-bg";
 import { StickyServices } from "@/components/sticky-services";
+import { TextReveal } from "@/components/motion/text-reveal";
+import { Magnetic } from "@/components/motion/magnetic";
+import { TiltCard } from "@/components/motion/tilt-card";
+import { Parallax } from "@/components/motion/parallax";
+import { Marquee } from "@/components/motion/marquee";
+import { ProcessJourney } from "@/components/process-journey";
 import {
   ABOUT_POINTS,
   DIGITAL_FEATURES,
-  HOME_PROCESS,
   IMAGES,
+  SERVICES,
   SITE,
   STATS,
   WHY_POINTS,
@@ -31,10 +37,19 @@ function CheckIcon() {
   );
 }
 
+const MARQUEE_ITEMS = [
+  ...SERVICES.map((s) => s.title),
+  "AI Damage Assess",
+  "Live Tracking",
+  "Customer Portal",
+] as const;
+
 export default function HomePage() {
   return (
     <div className="site-light">
       <HomeHero />
+
+      <Marquee items={MARQUEE_ITEMS} />
 
       {/* Core product — AI Assess → Book → Track → Portal */}
       <section
@@ -43,31 +58,48 @@ export default function HomePage() {
       >
         <AmbientBg />
         <div className="relative z-[1] mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
-          <Reveal className="max-w-2xl">
-            <p className="eyebrow">Digital journey</p>
-            <h2 className="section-title mt-3 text-[clamp(1.85rem,4.5vw,3.25rem)]">
-              From first photo to <span className="accent-word">lifetime care.</span>
-            </h2>
-            <p className="mt-4 text-white/65">
-              The platform we built for Cars Compound—assess damage, book, track live stages, and keep your vehicle
-              history in one portal.
-            </p>
-          </Reveal>
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <p className="eyebrow flex items-center gap-3">
+                <span className="hero-rule" aria-hidden />
+                Digital journey
+              </p>
+              <TextReveal
+                as="h2"
+                className="section-title mt-3 text-[clamp(1.85rem,4.5vw,3.25rem)]"
+                text="From first photo to"
+                accent="lifetime care."
+              />
+              <Reveal delay={80} variant="fade">
+                <p className="mt-4 max-w-xl text-white/65">
+                  The platform we built for Cars Compound—assess damage, book, track live stages, and keep your vehicle
+                  history in one portal.
+                </p>
+              </Reveal>
+            </div>
+            <Reveal delay={140} variant="fade" className="hidden lg:block">
+              <p className="max-w-[14rem] text-right text-[0.7rem] font-semibold uppercase leading-relaxed tracking-[0.22em] text-white/35">
+                Four steps. One shop system.
+              </p>
+            </Reveal>
+          </div>
 
-          <div className="mt-12 grid gap-4 sm:mt-14 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+          <div className="digital-grid mt-12 grid gap-4 sm:mt-14 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
             {DIGITAL_FEATURES.map((f, i) => (
-              <Reveal key={f.title} delay={i * 80}>
-                <Link href={f.href} className="glass-dark glass-feature group block h-full">
-                  <p className="font-display text-3xl font-extrabold tracking-tight text-[var(--accent)]/45 transition group-hover:text-[var(--accent)] sm:text-4xl">
-                    {f.n}
-                  </p>
-                  <div className="mt-4 h-px w-10 origin-left bg-[var(--accent)] transition-all duration-300 group-hover:w-16" />
-                  <h3 className="font-display mt-5 text-lg font-bold tracking-tight sm:text-xl">{f.title}</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-white/65">{f.body}</p>
-                  <span className="mt-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--accent)] transition group-hover:gap-3">
-                    {f.cta} <ArrowIcon />
-                  </span>
-                </Link>
+              <Reveal key={f.title} delay={i * 90} variant="up">
+                <TiltCard>
+                  <Link href={f.href} className="glass-dark glass-feature group block h-full">
+                    <p className="font-display text-3xl font-extrabold tracking-tight text-[var(--accent)]/45 transition duration-500 group-hover:text-[var(--accent)] sm:text-4xl">
+                      {f.n}
+                    </p>
+                    <div className="mt-4 h-px w-10 origin-left bg-[var(--accent)] transition-all duration-500 group-hover:w-16" />
+                    <h3 className="font-display mt-5 text-lg font-bold tracking-tight sm:text-xl">{f.title}</h3>
+                    <p className="mt-3 text-sm leading-relaxed text-white/65">{f.body}</p>
+                    <span className="mt-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--accent)] transition-all duration-300 group-hover:gap-3">
+                      {f.cta} <ArrowIcon />
+                    </span>
+                  </Link>
+                </TiltCard>
               </Reveal>
             ))}
           </div>
@@ -77,37 +109,56 @@ export default function HomePage() {
       {/* About */}
       <section className="section-pad overflow-hidden bg-white">
         <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:gap-12 sm:px-6 md:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
-          <Reveal>
+          <div>
             <p className="eyebrow">About Cars Compound</p>
-            <h2 className="section-title mt-3 text-[clamp(1.85rem,4.5vw,3.25rem)] text-[var(--ink)]">
-              Driven by passion. <span className="accent-word">Focused on quality.</span>
-            </h2>
-            <p className="mt-5 max-w-xl text-[var(--muted)] leading-relaxed md:text-[1.05rem]">{SITE.aboutBlurb}</p>
+            <TextReveal
+              as="h2"
+              className="section-title mt-3 text-[clamp(1.85rem,4.5vw,3.25rem)] text-[var(--ink)]"
+              text="Driven by passion."
+              accent="Focused on quality."
+            />
+            <Reveal delay={80} variant="fade">
+              <p className="mt-5 max-w-xl text-[var(--muted)] leading-relaxed md:text-[1.05rem]">{SITE.aboutBlurb}</p>
+            </Reveal>
             <ul className="mt-8 grid gap-3 sm:grid-cols-2">
-              {ABOUT_POINTS.slice(0, 4).map((p) => (
-                <li key={p} className="flex items-start gap-2.5 text-sm font-medium text-[var(--ink)]">
+              {ABOUT_POINTS.slice(0, 4).map((p, i) => (
+                <Reveal
+                  key={p}
+                  delay={i * 70}
+                  variant="left"
+                  as="li"
+                  className="flex items-start gap-2.5 text-sm font-medium text-[var(--ink)]"
+                >
                   <CheckIcon />
                   <span>{p}</span>
-                </li>
+                </Reveal>
               ))}
             </ul>
-            <Link href="/about" className="btn-outline mt-9 inline-flex w-full sm:w-auto">
-              Learn More About Us <ArrowIcon />
-            </Link>
-          </Reveal>
+            <Reveal delay={160}>
+              <Magnetic>
+                <Link href="/about" className="btn-outline mt-9 inline-flex w-full sm:w-auto">
+                  Learn More About Us <ArrowIcon />
+                </Link>
+              </Magnetic>
+            </Reveal>
+          </div>
 
-          <Reveal delay={120}>
-            <div className="relative min-h-[280px] w-full overflow-hidden sm:min-h-[360px] lg:min-h-[480px]">
-              <div
-                className="absolute inset-0 bg-cover bg-center transition-transform duration-700 hover:scale-[1.03]"
-                style={{ backgroundImage: `url('${IMAGES.shop}')` }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+          <Reveal delay={80} variant="scale" as="figure" className="about-media">
+            <div className="about-media-frame relative min-h-[280px] w-full overflow-hidden bg-[#12161d] sm:min-h-[360px] lg:min-h-[480px]">
+              <Parallax speed={-0.16} zoom={0.06} scope="parent" className="absolute inset-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={IMAGES.shop}
+                  alt="Cars Compound shop floor"
+                  className="absolute inset-[-10%] h-[120%] w-[120%] max-w-none object-cover"
+                />
+              </Parallax>
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/10" />
               <Link
                 href="/about"
-                className="group absolute bottom-5 left-5 inline-flex items-center gap-3 text-sm font-bold tracking-wide text-white sm:bottom-7 sm:left-7"
+                className="group absolute bottom-5 left-5 z-[1] inline-flex items-center gap-3 text-sm font-bold tracking-wide text-white sm:bottom-7 sm:left-7"
               >
-                <span className="grid h-12 w-12 place-items-center rounded-full bg-[var(--accent)] transition group-hover:scale-105">
+                <span className="grid h-12 w-12 place-items-center rounded-full bg-[var(--accent)] transition duration-300 group-hover:scale-105">
                   <svg viewBox="0 0 24 24" className="ml-0.5 h-4 w-4 fill-current" aria-hidden>
                     <path d="M8 6.5v11l9-5.5-9-5.5z" />
                   </svg>
@@ -121,80 +172,65 @@ export default function HomePage() {
 
       <StickyServices />
 
-      {/* Process */}
-      <section className="section-pad bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
-          <Reveal className="max-w-2xl">
-            <p className="eyebrow">Our Process</p>
-            <h2 className="section-title mt-3 text-[clamp(1.85rem,4.5vw,3.25rem)] text-[var(--ink)]">
-              Simple steps, <span className="accent-word">perfect</span> results.
-            </h2>
-          </Reveal>
-
-          <ol className="mt-12 grid gap-10 sm:grid-cols-2 lg:mt-16 lg:grid-cols-5 lg:gap-6">
-            {HOME_PROCESS.map((step, i) => (
-              <Reveal key={step.n} delay={i * 70} as="li" className="relative">
-                <p className="font-display text-4xl font-extrabold tracking-tight text-[var(--accent)]/25 sm:text-5xl">
-                  {step.n}
-                </p>
-                <h3 className="font-display mt-3 text-lg font-bold text-[var(--ink)]">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--muted)]">{step.body}</p>
-                {i < HOME_PROCESS.length - 1 ? (
-                  <span
-                    className="absolute -right-3 top-6 hidden h-px w-6 bg-[var(--accent)]/35 lg:block"
-                    aria-hidden
-                  />
-                ) : null}
-              </Reveal>
-            ))}
-          </ol>
-        </div>
-      </section>
+      <ProcessJourney />
 
       {/* Why */}
-      <section className="relative overflow-hidden">
+      <section className="why-section relative overflow-hidden">
         <div className="grid lg:grid-cols-2">
-          <div className="relative section-pad bg-[var(--charcoal)] px-4 text-white sm:px-6 md:px-8 lg:px-12 xl:pl-[max(2rem,calc((100vw-80rem)/2+2rem))]">
-            <div
-              className="pointer-events-none absolute inset-0 opacity-[0.22]"
-              style={{
-                backgroundImage: `url('${IMAGES.why}')`,
-                backgroundSize: "cover",
-                backgroundPosition: "center right",
-              }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-[var(--charcoal)] via-[var(--charcoal)]/92 to-[var(--charcoal)]/75" />
-            <Reveal className="relative max-w-xl">
-              <p className="eyebrow">Why Choose Us</p>
-              <h2 className="section-title mt-3 text-[clamp(1.85rem,4.5vw,3.25rem)]">
-                We don&apos;t just repair, <span className="accent-word">we perfect.</span>
-              </h2>
-              <p className="mt-5 text-white/65 leading-relaxed">
-                Every vehicle leaves our shop inspected, finished, and ready for the road—with digital tracking from
-                intake to delivery.
+          <div className="relative min-h-[28rem] overflow-hidden bg-[var(--charcoal)] px-4 py-16 text-white sm:min-h-[34rem] sm:px-6 sm:py-20 md:px-8 lg:px-12 lg:py-[7.25rem] xl:pl-[max(2rem,calc((100vw-80rem)/2+2rem))]">
+            <Parallax speed={0.12} zoom={0.08} className="pointer-events-none absolute inset-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={IMAGES.why}
+                alt=""
+                className="absolute inset-[-12%] h-[124%] w-[124%] max-w-none object-cover opacity-45"
+              />
+            </Parallax>
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0c0e12] via-[#0c0e12]/82 to-[#0c0e12]/40" />
+            <div className="relative max-w-xl">
+              <p className="eyebrow flex items-center gap-3">
+                <span className="hero-rule" aria-hidden />
+                Why Choose Us
               </p>
-              <ul className="mt-8 space-y-3.5">
-                {WHY_POINTS.map((p) => (
-                  <li key={p} className="flex items-start gap-3 text-sm font-medium text-white/88">
+              <TextReveal
+                as="h2"
+                className="section-title mt-3 text-[clamp(1.85rem,4.5vw,3.25rem)]"
+                text="We don't just repair,"
+                accent="we perfect."
+              />
+              <Reveal delay={80} variant="fade">
+                <p className="mt-5 text-white/65 leading-relaxed">
+                  Every vehicle leaves our shop inspected, finished, and ready for the road—with digital tracking from
+                  intake to delivery.
+                </p>
+              </Reveal>
+              <ul className="why-points mt-8">
+                {WHY_POINTS.map((p, i) => (
+                  <Reveal
+                    key={p}
+                    delay={i * 70}
+                    variant="left"
+                    as="li"
+                    className="why-point"
+                  >
                     <CheckIcon />
                     <span>{p}</span>
-                  </li>
+                  </Reveal>
                 ))}
               </ul>
-            </Reveal>
+            </div>
           </div>
 
-          <div className="section-pad bg-[var(--paper-deep)] px-4 text-[var(--ink)] sm:px-6 md:px-8 lg:px-12 xl:pr-[max(2rem,calc((100vw-80rem)/2+2rem))]">
-            <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:gap-x-10 sm:gap-y-14">
+          <div className="why-stats section-pad px-4 text-[var(--ink)] sm:px-6 md:px-8 lg:px-12 xl:pr-[max(2rem,calc((100vw-80rem)/2+2rem))]">
+            <p className="eyebrow">By the numbers</p>
+            <div className="why-stat-grid mt-8">
               {STATS.map((stat, i) => (
-                <Reveal key={stat.label} delay={i * 70}>
-                  <div>
-                    <p className="font-display text-[clamp(2.4rem,6vw,3.75rem)] font-extrabold leading-none tracking-tight text-[var(--accent)]">
+                <Reveal key={stat.label} delay={i * 90} variant="scale">
+                  <div className="stat-tile">
+                    <p className="stat-tile-value">
                       <StatCounter value={stat.value} suffix={stat.suffix} />
                     </p>
-                    <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)] sm:text-sm sm:tracking-[0.12em] sm:normal-case sm:font-medium">
-                      {stat.label}
-                    </p>
+                    <p className="stat-tile-label">{stat.label}</p>
                   </div>
                 </Reveal>
               ))}
@@ -203,35 +239,46 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section id="reviews" className="section-pad relative scroll-mt-28 overflow-hidden bg-[#f6f8fb]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_40%,rgba(232,74,39,0.12),transparent_55%)]" aria-hidden />
-        <div className="relative z-[1] mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
-          <TestimonialSlider />
-        </div>
-      </section>
+      <TestimonialSlider />
 
       {/* CTA */}
-      <section className="relative min-h-[48vh] overflow-hidden text-white sm:min-h-[52vh]">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: `linear-gradient(100deg, rgba(8,10,14,0.9), rgba(8,10,14,0.42)), url('${IMAGES.cta}')`,
-          }}
-        />
-        <div className="relative mx-auto flex min-h-[48vh] max-w-7xl flex-col items-start justify-center px-4 py-16 sm:min-h-[52vh] sm:px-6 sm:py-20 md:px-8">
-          <Reveal>
-            <h2 className="section-title max-w-3xl text-[clamp(1.85rem,4.5vw,3.4rem)]">
-              Let&apos;s get your car back in <span className="accent-word">perfect shape.</span>
-            </h2>
-            <div className="mt-8 flex w-full max-w-xl flex-col gap-3 sm:mt-9 sm:flex-row">
-              <Link href="/book" className="btn-primary btn-anim">
+      <section className="home-cta relative min-h-[64vh] overflow-hidden text-white sm:min-h-[70vh]">
+        <Parallax speed={0.18} zoom={0.08} className="absolute inset-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={IMAGES.cta}
+            alt=""
+            className="absolute inset-[-12%] h-[124%] w-[124%] max-w-none object-cover"
+          />
+        </Parallax>
+        <div className="home-cta-scrim absolute inset-0" />
+        <div className="relative mx-auto flex min-h-[64vh] max-w-7xl flex-col items-start justify-center px-4 py-20 sm:min-h-[70vh] sm:px-6 sm:py-24 md:px-8">
+          <p className="eyebrow flex items-center gap-3 text-[var(--accent-hot)]">
+            <span className="hero-rule" aria-hidden />
+            {SITE.location}
+          </p>
+          <TextReveal
+            as="h2"
+            className="section-title mt-4 max-w-3xl text-[clamp(2rem,5vw,3.6rem)]"
+            text="Let's get your car back in"
+            accent="perfect shape."
+          />
+          <Reveal delay={80} variant="fade">
+            <p className="mt-5 max-w-lg text-sm leading-relaxed text-white/70 sm:text-base">
+              Book an inspection or call the shop — we&apos;ll confirm, open a case, and send your tracking ID.
+            </p>
+          </Reveal>
+          <Reveal delay={140} className="cta-actions mt-8 flex w-full max-w-xl flex-col gap-3 sm:mt-9 sm:flex-row">
+            <Magnetic>
+              <Link href="/book" className="btn-primary btn-anim btn-sheen">
                 Book an Appointment <ArrowIcon />
               </Link>
-              <a href={`tel:${SITE.phoneTel}`} className="btn-ghost btn-anim">
-                Call Us Now
+            </Magnetic>
+            <Magnetic strength={7}>
+              <a href={`tel:${SITE.phoneTel}`} className="btn-ghost btn-anim btn-ghost-invert">
+                Call {SITE.phoneDisplay}
               </a>
-            </div>
+            </Magnetic>
           </Reveal>
         </div>
       </section>

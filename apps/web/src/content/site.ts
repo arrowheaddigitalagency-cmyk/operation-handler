@@ -239,7 +239,7 @@ export const ABOUT_POINTS = [
 export const IMAGES = {
   hero: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=2400&q=85",
   heroAlt: "https://images.unsplash.com/photo-1625047509168-a7026f36de04?auto=format&fit=crop&w=1800&q=80",
-  shop: "https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=1600&q=80",
+  shop: "https://images.unsplash.com/photo-1625047509168-a7026f36de04?auto=format&fit=crop&w=1800&q=85",
   detail: "https://images.unsplash.com/photo-1601362840469-51e4d8d58785?auto=format&fit=crop&w=1600&q=80",
   bay: "https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1600&q=80",
   paint: "https://images.unsplash.com/photo-1619642751034-765dfdf7c43e?auto=format&fit=crop&w=1600&q=80",

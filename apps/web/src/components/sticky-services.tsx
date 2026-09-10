@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { SERVICES } from "@/content/site";
+import { isLowPowerDevice, prefersReducedMotion } from "@/components/motion/motion-utils";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -16,64 +17,105 @@ function ArrowIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   );
 }
 
+function scrollPinnedTo(rootEl: HTMLElement, index: number) {
+  const st = ScrollTrigger.getAll().find((t) => t.vars.trigger === rootEl || t.trigger === rootEl);
+  if (!st) return;
+  const n = Math.max(SERVICES.length - 1, 1);
+  const y = st.start + (st.end - st.start) * (index / n);
+  window.dispatchEvent(new CustomEvent("cc-scroll-to", { detail: { y } }));
+}
+
 export function StickyServices() {
   const root = useRef<HTMLElement>(null);
   const pinRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLSpanElement>(null);
   const [active, setActive] = useState(0);
-  const activeRef = useRef(0);
 
   useEffect(() => {
     const rootEl = root.current;
     const pinEl = pinRef.current;
     if (!rootEl || !pinEl) return;
 
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) return;
-
     const slides = gsap.utils.toArray<HTMLElement>(pinEl.querySelectorAll(".svc-slide"));
-    const dots = gsap.utils.toArray<HTMLElement>(pinEl.querySelectorAll(".svc-dot"));
+    if (!slides.length) return;
 
-    const show = (i: number) => {
-      if (i === activeRef.current) return;
-      activeRef.current = i;
-      setActive(i);
-      slides.forEach((slide, idx) => {
-        slide.classList.toggle("is-active", idx === i);
-      });
-      dots.forEach((dot, idx) => {
-        dot.classList.toggle("is-active", idx === i);
-      });
-    };
-
-    slides.forEach((slide, idx) => {
-      slide.classList.toggle("is-active", idx === 0);
+    const reduced = prefersReducedMotion();
+    const lite = isLowPowerDevice();
+    slides.forEach((slide, i) => {
+      gsap.set(slide, { autoAlpha: i === 0 ? 1 : 0, zIndex: i === 0 ? 3 : 1 });
     });
 
+    if (reduced) {
+      return;
+    }
+
+    let lastIndex = 0;
     const ctx = gsap.context(() => {
-      ScrollTrigger.create({
-        trigger: rootEl,
-        start: "top top",
-        end: () => `+=${Math.max(SERVICES.length, 1) * window.innerHeight * 0.85}`,
-        pin: pinEl,
-        scrub: 0.65,
-        anticipatePin: 1,
-        invalidateOnRefresh: true,
-        onUpdate: (self) => {
-          const i = Math.min(SERVICES.length - 1, Math.floor(self.progress * SERVICES.length));
-          show(i);
+      const tl = gsap.timeline({
+        defaults: { ease: "none" },
+        scrollTrigger: {
+          trigger: rootEl,
+          start: "top top",
+          end: () => `+=${Math.max(SERVICES.length, 1) * window.innerHeight * (lite ? 0.85 : 1)}`,
+          pin: pinEl,
+          scrub: lite ? true : 1.05,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+          onUpdate: (self) => {
+            const n = Math.max(SERVICES.length - 1, 1);
+            const i = Math.min(SERVICES.length - 1, Math.round(self.progress * n));
+            if (trackRef.current) {
+              trackRef.current.style.transform = `scaleX(${self.progress})`;
+            }
+            if (i !== lastIndex) {
+              lastIndex = i;
+              setActive(i);
+            }
+          },
         },
+      });
+
+      slides.forEach((slide, i) => {
+        if (i === slides.length - 1) return;
+        const next = slides[i + 1];
+        const at = i;
+
+        tl.to(slide, { autoAlpha: 0, duration: 1 }, at)
+          .set(next, { zIndex: 4 }, at)
+          .fromTo(next, { autoAlpha: 0 }, { autoAlpha: 1, duration: 1, immediateRender: false }, at)
+          .set(slide, { zIndex: 1 }, at + 0.99);
+
+        if (!lite) {
+          const curImg = slide.querySelector(".svc-slide-img");
+          const nextImg = next.querySelector(".svc-slide-img");
+          const curCopy = slide.querySelectorAll(".svc-copy-seq");
+          const nextCopy = next.querySelectorAll(".svc-copy-seq");
+          tl.to(curImg, { scale: 1.08, duration: 1 }, at)
+            .to(curCopy, { y: -16, autoAlpha: 0, duration: 0.5 }, at)
+            .fromTo(nextImg, { scale: 1.08 }, { scale: 1, duration: 1, immediateRender: false }, at)
+            .fromTo(
+              nextCopy,
+              { y: 20, autoAlpha: 0 },
+              { y: 0, autoAlpha: 1, duration: 0.55, immediateRender: false },
+              at + 0.2,
+            );
+        }
       });
     }, rootEl);
 
     const refresh = () => ScrollTrigger.refresh();
-    window.addEventListener("resize", refresh);
-    const t = window.setTimeout(refresh, 200);
-    const t2 = window.setTimeout(refresh, 800);
+    let resizeTimer = 0;
+    const onResize = () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(refresh, 180);
+    };
+    window.addEventListener("resize", onResize, { passive: true });
+    const t = window.setTimeout(refresh, 280);
 
     return () => {
-      window.removeEventListener("resize", refresh);
+      window.removeEventListener("resize", onResize);
+      window.clearTimeout(resizeTimer);
       window.clearTimeout(t);
-      window.clearTimeout(t2);
       ctx.revert();
     };
   }, []);
@@ -96,24 +138,24 @@ export function StickyServices() {
                 {String(active + 1).padStart(2, "0")} / {String(SERVICES.length).padStart(2, "0")}
               </span>
               <div className="svc-progress-track">
-                <i style={{ width: `${((active + 1) / SERVICES.length) * 100}%` }} />
+                <i ref={trackRef} />
               </div>
             </div>
           </div>
 
-          <div className="relative mt-5 min-h-0 flex-1">
+          <div className="svc-stage relative mt-5 min-h-0 flex-1">
             {SERVICES.map((s, i) => (
-              <article key={s.title} className={`svc-slide ${i === 0 ? "is-active" : ""}`}>
+              <article key={s.title} className={`svc-slide ${i === active ? "is-active" : ""}`}>
                 <div className="svc-slide-media">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={s.image} alt="" />
+                  <img className="svc-slide-img" src={s.image} alt="" />
                   <div className="svc-slide-scrim" />
                 </div>
                 <div className="svc-slide-copy">
-                  <span className="svc-chip">Service {String(i + 1).padStart(2, "0")}</span>
-                  <h3>{s.title}</h3>
-                  <p>{s.body}</p>
-                  <Link href={s.href} className="svc-cta">
+                  <span className="svc-copy-seq svc-chip">Service {String(i + 1).padStart(2, "0")}</span>
+                  <h3 className="svc-copy-seq">{s.title}</h3>
+                  <p className="svc-copy-seq">{s.body}</p>
+                  <Link href={s.href} className="svc-copy-seq svc-cta">
                     Explore service <ArrowIcon />
                   </Link>
                 </div>
@@ -130,13 +172,7 @@ export function StickyServices() {
                   className={`svc-dot ${i === active ? "is-active" : ""}`}
                   aria-label={s.title}
                   onClick={() => {
-                    const rootEl = root.current;
-                    if (!rootEl) return;
-                    const st = ScrollTrigger.getAll().find((t) => t.trigger === rootEl);
-                    if (!st) return;
-                    const p = (i + 0.5) / SERVICES.length;
-                    const y = st.start + (st.end - st.start) * p;
-                    window.scrollTo({ top: y, behavior: "smooth" });
+                    if (root.current) scrollPinnedTo(root.current, i);
                   }}
                 >
                   {String(i + 1).padStart(2, "0")}
