@@ -31,7 +31,7 @@ function initials(name: string) {
 
 export function TestimonialSlider() {
   const root = useRef<HTMLElement>(null);
-  const quoteRef = useRef<HTMLQuoteElement>(null);
+  const quoteRef = useRef<HTMLParagraphElement>(null);
   const [focus, setFocus] = useState(0);
   const active = TESTIMONIALS[focus];
 
