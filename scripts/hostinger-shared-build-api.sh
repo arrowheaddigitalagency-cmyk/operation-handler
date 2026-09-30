@@ -10,6 +10,7 @@ pnpm install --frozen-lockfile --prod=false
 pnpm db:generate
 pnpm --filter @cc/domain build
 pnpm --filter @cc/config build
+pnpm --filter @cc/damage-estimate build
 pnpm --filter @cc/db build
 pnpm --filter @cc/notifications build
 pnpm --filter @cc/ai build
