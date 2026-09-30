@@ -10,7 +10,7 @@ import type {
 } from "../types.js";
 
 type GeminiDet = {
-  imageIndex: number;
+  imageIndex?: number;
   partName: string;
   side?: string;
   damageType?: string;
@@ -22,7 +22,7 @@ type GeminiDet = {
 };
 
 /**
- * Gemini vision — inspects EVERY uploaded photo and returns per-image detections.
+ * Gemini vision — one API call per photo so later angles are not skipped.
  */
 export class GeminiDamageProvider implements DamageProvider {
   readonly name = "gemini";
@@ -46,109 +46,22 @@ export class GeminiDamageProvider implements DamageProvider {
       };
     }
 
-    const parts: Array<Record<string, unknown>> = [
-      {
-        text: `You are an expert auto-body collision estimator (CCC ONE style).
-Inspect EVERY photo below. Photos are indexed starting at 0 in the order provided.
-Find ALL visible damage on the vehicle exterior: dents, scratches, scuffs, paint chips, cracks, broken lamps, glass, bumper damage, door/rocker/quarter damage, etc.
-Do NOT invent damage that is not visible. Do NOT skip a photo — if a photo shows damage, emit detections with that imageIndex.
-If a photo shows no clear damage, emit nothing for that index.
-
-Return STRICT JSON only (no markdown):
-{
-  "detections": [
-    {
-      "imageIndex": 0,
-      "partName": "Front bumper cover",
-      "side": "front"|"left"|"right"|"rear"|"center"|"unknown",
-      "damageType": "dent"|"scratch"|"crack"|"tear"|"paint_damage"|"glass",
-      "severity": "light"|"medium"|"heavy",
-      "operation": "repair"|"replace"|"refinish"|"blend"|"r_and_i",
-      "confidence": 0.0-1.0,
-      "bbox": { "x": 0-1, "y": 0-1, "w": 0-1, "h": 0-1 },
-      "description": "short"
-    }
-  ],
-  "notes": ["optional"]
-}
-bbox is normalized 0-1 relative to that image. Prefer one detection per distinct damaged part per photo.
-Vehicle hint: ${JSON.stringify(input.vehicle ?? {})}.
-Paint: ${input.paintType ?? "unknown"} ${input.paintCode ?? ""}.`,
-      },
-    ];
-
     const notes: string[] = [];
+    const detections: DamageDetection[] = [];
+
+    // Sequential per photo (avoids Gemini ignoring image 2/3 in a multi-image prompt)
     for (let i = 0; i < input.imageUrls.length; i++) {
-      const url = input.imageUrls[i]!;
       try {
-        const imgRes = await fetch(url);
-        if (!imgRes.ok) {
-          notes.push(`Could not fetch image[${i}]: HTTP ${imgRes.status}`);
-          continue;
-        }
-        const buf = Buffer.from(await imgRes.arrayBuffer());
-        const mime = (imgRes.headers.get("content-type") || "image/jpeg").split(";")[0]!;
-        parts.push({ text: `Photo index ${i} of ${input.imageUrls.length - 1}:` });
-        parts.push({
-          inline_data: {
-            mime_type: mime,
-            data: buf.toString("base64"),
-          },
-        });
+        const batch = await this.analyzeOne(input.imageUrls[i]!, i, input);
+        detections.push(...batch.detections);
+        notes.push(...batch.notes);
       } catch (e) {
-        notes.push(`Could not fetch image[${i}]: ${e instanceof Error ? e.message : "error"}`);
+        notes.push(`Photo[${i}] Gemini failed: ${e instanceof Error ? e.message : "error"}`);
       }
     }
 
-    if (parts.length < 2) {
-      return {
-        provider: this.name,
-        isSample: false,
-        detections: [],
-        notes: [...notes, "No images could be loaded for Gemini"],
-        analyzedAt: new Date().toISOString(),
-      };
-    }
-
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts }],
-        generationConfig: {
-          temperature: 0.15,
-          responseMimeType: "application/json",
-        },
-      }),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Gemini damage analyze failed: ${res.status} ${text.slice(0, 400)}`);
-    }
-
-    const data = (await res.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    };
-    const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
-    if (!raw.trim()) throw new Error("Gemini returned empty damage JSON");
-
-    let parsed: { detections?: GeminiDet[]; notes?: string[] };
-    try {
-      parsed = JSON.parse(raw) as { detections?: GeminiDet[]; notes?: string[] };
-    } catch {
-      throw new Error("Gemini returned invalid JSON for damage detections");
-    }
-
-    const maxIdx = Math.max(0, input.imageUrls.length - 1);
-    const detections: DamageDetection[] = (parsed.detections ?? [])
-      .filter((d) => d && typeof d.partName === "string" && d.partName.trim())
-      .map((d) => normalizeDet(d, maxIdx));
-
-    const seenIndexes = new Set(detections.map((d) => d.imageIndex));
-    for (let i = 0; i < input.imageUrls.length; i++) {
-      if (!seenIndexes.has(i)) notes.push(`No damage detections reported for photo index ${i}`);
+    if (!detections.length && notes.some((n) => /failed|fetch|HTTP/i.test(n))) {
+      throw new Error(`Gemini found no detections. ${notes.slice(0, 3).join(" | ")}`);
     }
 
     return {
@@ -157,16 +70,106 @@ Paint: ${input.paintType ?? "unknown"} ${input.paintCode ?? ""}.`,
       detections,
       notes: [
         ...notes,
-        ...(parsed.notes ?? []),
-        `Gemini inspected ${input.imageUrls.length} photo(s); ${detections.length} detection(s)`,
+        `Gemini per-photo scan: ${input.imageUrls.length} image(s), ${detections.length} detection(s)`,
       ],
       analyzedAt: new Date().toISOString(),
     };
   }
+
+  private async analyzeOne(
+    imageUrl: string,
+    imageIndex: number,
+    input: DamageAnalyzeInput,
+  ): Promise<{ detections: DamageDetection[]; notes: string[] }> {
+    const notes: string[] = [];
+    const imgRes = await fetch(imageUrl);
+    if (!imgRes.ok) {
+      notes.push(`Could not fetch image[${imageIndex}]: HTTP ${imgRes.status}`);
+      return { detections: [], notes };
+    }
+    const buf = Buffer.from(await imgRes.arrayBuffer());
+    const mime = (imgRes.headers.get("content-type") || "image/jpeg").split(";")[0]!;
+
+    const parts: Array<Record<string, unknown>> = [
+      {
+        text: `You are an expert auto-body collision estimator.
+This is photo index ${imageIndex} only. Find ALL visible exterior damage in THIS photo:
+dents, scratches, scuffs, paint chips, cracks, broken lamps, glass, bumper, fender, door, rocker, quarter, hood, mirror, etc.
+Do NOT invent damage. If nothing clear, return {"detections":[]}.
+
+Return STRICT JSON only:
+{
+  "detections": [
+    {
+      "partName": "Rear door" or "Front bumper cover" etc,
+      "side": "front"|"left"|"right"|"rear"|"center"|"unknown",
+      "damageType": "dent"|"scratch"|"crack"|"tear"|"paint_damage"|"glass",
+      "severity": "light"|"medium"|"heavy",
+      "operation": "repair"|"replace"|"refinish"|"blend"|"r_and_i",
+      "confidence": 0.0-1.0,
+      "bbox": { "x": 0-1, "y": 0-1, "w": 0-1, "h": 0-1 },
+      "description": "short"
+    }
+  ]
+}
+bbox normalized to THIS image. Vehicle: ${JSON.stringify(input.vehicle ?? {})}.`,
+      },
+      {
+        inline_data: {
+          mime_type: mime,
+          data: buf.toString("base64"),
+        },
+      },
+    ];
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts }],
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: "application/json",
+        },
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`HTTP ${res.status} ${text.slice(0, 200)}`);
+    }
+
+    const data = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+    if (!raw.trim()) {
+      notes.push(`Photo[${imageIndex}]: empty Gemini response`);
+      return { detections: [], notes };
+    }
+
+    let parsed: { detections?: GeminiDet[] };
+    try {
+      parsed = JSON.parse(raw) as { detections?: GeminiDet[] };
+    } catch {
+      throw new Error(`invalid JSON on photo ${imageIndex}`);
+    }
+
+    const detections = (parsed.detections ?? [])
+      .filter((d) => d && typeof d.partName === "string" && d.partName.trim())
+      .map((d) => normalizeDet({ ...d, imageIndex }, imageIndex));
+
+    if (!detections.length) {
+      notes.push(`Photo[${imageIndex}]: no damage reported by Gemini`);
+    } else {
+      notes.push(`Photo[${imageIndex}]: ${detections.length} detection(s)`);
+    }
+    return { detections, notes };
+  }
 }
 
-function normalizeDet(d: GeminiDet, maxIdx: number): DamageDetection {
-  const idx = clampInt(Number(d.imageIndex) || 0, 0, maxIdx);
+function normalizeDet(d: GeminiDet, forcedIndex: number): DamageDetection {
   const bbox = d.bbox
     ? {
         x: clamp01(Number(d.bbox.x)),
@@ -183,7 +186,7 @@ function normalizeDet(d: GeminiDet, maxIdx: number): DamageDetection {
     severity: normalizeSeverity(d.severity),
     operation: normalizeOp(d.operation, d.severity),
     confidence: clamp01(Number(d.confidence) || 0.7),
-    imageIndex: idx,
+    imageIndex: forcedIndex,
     bbox,
   };
 }
@@ -191,10 +194,6 @@ function normalizeDet(d: GeminiDet, maxIdx: number): DamageDetection {
 function clamp01(n: number): number {
   if (!Number.isFinite(n)) return 0;
   return Math.max(0, Math.min(1, n));
-}
-
-function clampInt(n: number, lo: number, hi: number): number {
-  return Math.max(lo, Math.min(hi, Math.round(n)));
 }
 
 function normalizeSide(s?: string): DamageDetection["side"] {

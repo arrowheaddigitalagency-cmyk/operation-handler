@@ -181,12 +181,10 @@ export class DamageEstimateService {
 
     try {
       let analysis: DamageAnalyzeResult;
+      // Gemini whenever key is present (covers all photos). Mock only without a key.
       if (env.DAMAGE_PROVIDER === "onnx" && env.ML_SERVICE_URL) {
         analysis = await this.callOnnxService(env.ML_SERVICE_URL, imageUrls, vehicle, paint);
-      } else if (
-        (env.DAMAGE_PROVIDER === "gemini" || (env.DAMAGE_PROVIDER !== "mock" && !!env.GEMINI_API_KEY)) &&
-        env.GEMINI_API_KEY
-      ) {
+      } else if (env.GEMINI_API_KEY) {
         analysis = await this.callGeminiFallback(imageUrls, vehicle, paint);
       } else {
         analysis = await createProviders({ DAMAGE_PROVIDER: "mock" }).damage.analyze({
@@ -258,6 +256,12 @@ export class DamageEstimateService {
       }
 
       const priced = await this.priceInternal(id, (session.pricingMode as PricingMode) || "MIXED", true);
+
+      // Reflect whether AI was real or sample
+      await this.prisma.damageEstimateSession.update({
+        where: { id },
+        data: { samplePricing: analysis.isSample === true },
+      });
 
       await this.prisma.damageEstimateVersion.create({
         data: {
