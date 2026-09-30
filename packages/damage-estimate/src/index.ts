@@ -5,6 +5,8 @@ export * from "./providers/vin/nhtsa-vpic.js";
 export * from "./providers/vin/stubs.js";
 export * from "./providers/damage/mock.js";
 export * from "./providers/damage/gemini.js";
+export * from "./providers/damage/groq.js";
+export * from "./providers/damage/ensemble.js";
 export * from "./providers/damage/stubs.js";
 export * from "./providers/parts/mock.js";
 export * from "./providers/parts/collision-catalog.js";

@@ -49,6 +49,12 @@ export type DeSession = {
   confidence: number | null;
   lines: DeLine[];
   appointmentId?: string | null;
+  versions?: {
+    id: string;
+    kind: string;
+    label: string | null;
+    payloadJson?: { notes?: string[]; provider?: string; detections?: unknown[] } | null;
+  }[];
 };
 
 export function decodeVin(vin: string) {

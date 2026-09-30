@@ -36,13 +36,17 @@ export const envSchema = z.object({
   OPENAI_VISION_MODEL: z.string().default("gpt-4o-mini"),
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_VISION_MODEL: z.string().default("gemini-3.8-flash"),
+  GROQ_API_KEY: z.string().optional(),
+  GROQ_VISION_MODEL: z.string().default("qwen/qwen3.8-27b"),
   AI_MAX_IMAGES: z.coerce.number().int().positive().default(8),
   AI_MAX_IMAGE_MB: z.coerce.number().positive().default(8),
 
   // Damage-estimate module (CCC-style track) — free providers
   VIN_PROVIDER: z.enum(["nhtsa", "dataone", "chromedata"]).default("nhtsa"),
   NHTSA_VPIC_BASE_URL: z.string().url().default("https://vpic.nhtsa.dot.gov/api"),
-  DAMAGE_PROVIDER: z.enum(["mock", "onnx", "gemini", "yolo", "tractable"]).default("mock"),
+  DAMAGE_PROVIDER: z
+    .enum(["mock", "onnx", "gemini", "groq", "ensemble", "yolo", "tractable"])
+    .default("mock"),
   ML_SERVICE_URL: z.string().url().optional(),
   PARTS_PROVIDER: z
     .enum(["mock", "collision_catalog", "partstech", "oeconnection", "partslink24", "lkq"])

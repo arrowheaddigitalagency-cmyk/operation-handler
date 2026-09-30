@@ -41,6 +41,8 @@ export class DamageEstimateService {
       OPEN_LABOR_BASE_URL: env.OPEN_LABOR_BASE_URL,
       GEMINI_API_KEY: env.GEMINI_API_KEY,
       GEMINI_VISION_MODEL: env.GEMINI_VISION_MODEL,
+      GROQ_API_KEY: env.GROQ_API_KEY,
+      GROQ_VISION_MODEL: env.GROQ_VISION_MODEL,
     });
   }
 
@@ -184,8 +186,13 @@ export class DamageEstimateService {
       // Gemini whenever key is present (covers all photos). Mock only without a key.
       if (env.DAMAGE_PROVIDER === "onnx" && env.ML_SERVICE_URL) {
         analysis = await this.callOnnxService(env.ML_SERVICE_URL, imageUrls, vehicle, paint);
-      } else if (env.GEMINI_API_KEY) {
-        analysis = await this.callGeminiFallback(imageUrls, vehicle, paint);
+      } else if (
+        env.DAMAGE_PROVIDER === "ensemble" ||
+        env.DAMAGE_PROVIDER === "groq" ||
+        env.GEMINI_API_KEY ||
+        env.GROQ_API_KEY
+      ) {
+        analysis = await this.callVisionProviders(imageUrls, vehicle, paint);
       } else {
         analysis = await createProviders({ DAMAGE_PROVIDER: "mock" }).damage.analyze({
           imageUrls,
@@ -308,14 +315,14 @@ export class DamageEstimateService {
       if (!res.ok) throw new Error(`ML service ${res.status}`);
       return (await res.json()) as DamageAnalyzeResult;
     } catch (err) {
-      // Prefer Gemini over mock when ONNX is down
+      // Prefer vision APIs over mock when ONNX is down
       const env = loadEnv();
-      if (env.GEMINI_API_KEY) {
+      if (env.GEMINI_API_KEY || env.GROQ_API_KEY) {
         try {
-          const g = await this.callGeminiFallback(imageUrls, vehicle, paint);
+          const g = await this.callVisionProviders(imageUrls, vehicle, paint);
           g.notes = [
             ...(g.notes ?? []),
-            `ONNX unavailable (${err instanceof Error ? err.message : "error"}); used Gemini`,
+            `ONNX unavailable (${err instanceof Error ? err.message : "error"}); used vision providers`,
           ];
           return g;
         } catch {
@@ -335,23 +342,46 @@ export class DamageEstimateService {
     }
   }
 
-  private async callGeminiFallback(
+  private async callVisionProviders(
     imageUrls: string[],
     vehicle: Record<string, string | null>,
     paint: { paintType?: PaintType; paintCode?: string },
   ): Promise<DamageAnalyzeResult> {
     const env = loadEnv();
-    if (!env.GEMINI_API_KEY?.trim()) {
+    const hasGemini = !!env.GEMINI_API_KEY?.trim();
+    const hasGroq = !!env.GROQ_API_KEY?.trim();
+    if (!hasGemini && !hasGroq) {
       throw new Error(
-        "GEMINI_API_KEY is missing on the API server. Add it in Railway Variables (DAMAGE_PROVIDER=gemini alone is not enough).",
+        "No vision API key. Set GEMINI_API_KEY and/or GROQ_API_KEY on Railway (DAMAGE_PROVIDER alone is not enough).",
       );
     }
-    const gemini = createProviders({
-      DAMAGE_PROVIDER: "gemini",
+
+    const requested = env.DAMAGE_PROVIDER;
+    let kind: string;
+    if (requested === "ensemble") {
+      kind = "ensemble";
+    } else if (requested === "groq") {
+      kind = "groq";
+    } else if (requested === "gemini") {
+      kind = "gemini";
+    } else if (hasGemini && hasGroq) {
+      // Both free keys present → dual sequential merge (best for client demos)
+      kind = "ensemble";
+    } else if (hasGroq) {
+      kind = "groq";
+    } else {
+      kind = "gemini";
+    }
+
+    const provider = createProviders({
+      DAMAGE_PROVIDER: kind,
       GEMINI_API_KEY: env.GEMINI_API_KEY,
       GEMINI_VISION_MODEL: env.GEMINI_VISION_MODEL,
+      GROQ_API_KEY: env.GROQ_API_KEY,
+      GROQ_VISION_MODEL: env.GROQ_VISION_MODEL,
     }).damage;
-    return gemini.analyze({
+
+    return provider.analyze({
       imageUrls,
       vehicle: vehicle as never,
       paintType: paint.paintType,
@@ -570,6 +600,18 @@ export class DamageEstimateService {
         customerName: dto.name,
         customerEmail: dto.email,
         customerPhone: dto.phone,
+      },
+    });
+
+    // Ensure CRM lead notes point at this damage-estimate session (bookPublic creates WEB_BOOK lead)
+    const rangeNote =
+      session.rangeLow != null && session.rangeHigh != null
+        ? ` Preliminary range $${Math.round(session.rangeLow)}–$${Math.round(session.rangeHigh)}.`
+        : "";
+    await this.prisma.lead.updateMany({
+      where: { appointmentId: appt.id },
+      data: {
+        notes: `Damage estimate (/damage-estimate) session ${sessionId}.${rangeNote} AI draft — technician must confirm.`,
       },
     });
 

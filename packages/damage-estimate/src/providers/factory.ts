@@ -9,6 +9,8 @@ import { NhtsaVpicVinProvider } from "./vin/nhtsa-vpic.js";
 import { ChromeDataVinProvider, DataOneVinProvider } from "./vin/stubs.js";
 import { MockDamageProvider } from "./damage/mock.js";
 import { GeminiDamageProvider } from "./damage/gemini.js";
+import { GroqDamageProvider } from "./damage/groq.js";
+import { EnsembleDamageProvider } from "./damage/ensemble.js";
 import {
   TractableDamageProvider,
   VisionLlmDamageProvider,
@@ -46,6 +48,8 @@ export type ProviderEnv = {
   OPEN_LABOR_BASE_URL?: string;
   GEMINI_API_KEY?: string;
   GEMINI_VISION_MODEL?: string;
+  GROQ_API_KEY?: string;
+  GROQ_VISION_MODEL?: string;
 };
 
 export function createProviders(env: ProviderEnv = {}): ProviderBundle {
@@ -70,6 +74,17 @@ function createDamage(env: ProviderEnv): DamageProvider {
   if (kind === "yolo") return new YoloDamageProvider();
   if (kind === "vision_llm") return new VisionLlmDamageProvider();
   if (kind === "tractable") return new TractableDamageProvider();
+  if (kind === "ensemble" || kind === "dual" || kind === "gemini_groq") {
+    return new EnsembleDamageProvider({
+      geminiApiKey: env.GEMINI_API_KEY,
+      geminiModel: env.GEMINI_VISION_MODEL,
+      groqApiKey: env.GROQ_API_KEY,
+      groqModel: env.GROQ_VISION_MODEL,
+    });
+  }
+  if (kind === "groq") {
+    return new GroqDamageProvider(env.GROQ_API_KEY ?? "", env.GROQ_VISION_MODEL);
+  }
   if (kind === "gemini") {
     return new GeminiDamageProvider(env.GEMINI_API_KEY ?? "", env.GEMINI_VISION_MODEL);
   }

@@ -11,20 +11,19 @@ import {
 } from "./vision-shared.js";
 
 /**
- * Gemini vision — parallel per-photo calls with 503 retries.
- * Returns partial detections if some photos succeed (does not fail the whole run).
+ * Groq vision (OpenAI-compatible) — free-tier multimodal models e.g. qwen/qwen3.8-27b.
  */
-export class GeminiDamageProvider implements DamageProvider {
-  readonly name = "gemini";
+export class GroqDamageProvider implements DamageProvider {
+  readonly name = "groq";
 
   constructor(
     private readonly apiKey: string,
-    private readonly model = "gemini-3.8-flash",
+    private readonly model = "qwen/qwen3.8-27b",
   ) {}
 
   async analyze(input: DamageAnalyzeInput): Promise<DamageAnalyzeResult> {
     if (!this.apiKey?.trim()) {
-      throw new Error("GEMINI_API_KEY required for gemini damage provider");
+      throw new Error("GROQ_API_KEY required for groq damage provider");
     }
     if (!input.imageUrls.length) {
       return {
@@ -39,17 +38,16 @@ export class GeminiDamageProvider implements DamageProvider {
     const notes: string[] = [];
     const detections: DamageDetection[] = [];
 
-    const results = await Promise.all(
-      input.imageUrls.map((url, i) => this.analyzeOneWithRetry(url, i, input)),
-    );
-
-    for (const r of results) {
+    // Sequential — free-tier friendly
+    for (let i = 0; i < input.imageUrls.length; i++) {
+      const r = await this.analyzeOneWithRetry(input.imageUrls[i]!, i, input);
       detections.push(...r.detections);
       notes.push(...r.notes);
+      if (i < input.imageUrls.length - 1) await sleep(400);
     }
 
     if (!detections.length) {
-      throw new Error(`Gemini found no detections. ${notes.slice(0, 4).join(" | ")}`);
+      throw new Error(`Groq found no detections. ${notes.slice(0, 4).join(" | ")}`);
     }
 
     return {
@@ -58,20 +56,19 @@ export class GeminiDamageProvider implements DamageProvider {
       detections,
       notes: [
         ...notes,
-        `Gemini parallel scan: ${input.imageUrls.length} image(s), ${detections.length} detection(s)`,
+        `Groq sequential scan: ${input.imageUrls.length} image(s), ${detections.length} detection(s)`,
       ],
       analyzedAt: new Date().toISOString(),
     };
   }
 
-  /** Single-photo analyze for ensemble (no throw on empty). */
   async analyzePhoto(
     imageUrl: string,
     imageIndex: number,
     input: DamageAnalyzeInput,
   ): Promise<{ detections: DamageDetection[]; notes: string[] }> {
     if (!this.apiKey?.trim()) {
-      return { detections: [], notes: [`Photo[${imageIndex}] Gemini skipped: no API key`] };
+      return { detections: [], notes: [`Photo[${imageIndex}] Groq skipped: no API key`] };
     }
     return this.analyzeOneWithRetry(imageUrl, imageIndex, input);
   }
@@ -88,14 +85,14 @@ export class GeminiDamageProvider implements DamageProvider {
         return await this.analyzeOne(imageUrl, imageIndex, input);
       } catch (e) {
         lastErr = e instanceof Error ? e.message : "error";
-        const retryable = /503|UNAVAILABLE|high demand|temporarily|429|RESOURCE_EXHAUSTED/i.test(lastErr);
+        const retryable = /503|429|rate|timeout|temporar|overloaded/i.test(lastErr);
         if (!retryable || attempt === maxAttempts) break;
-        await sleep(800 * attempt * attempt);
+        await sleep(900 * attempt * attempt);
       }
     }
     return {
       detections: [],
-      notes: [`Photo[${imageIndex}] Gemini failed after retries: ${lastErr.slice(0, 180)}`],
+      notes: [`Photo[${imageIndex}] Groq failed after retries: ${lastErr.slice(0, 180)}`],
     };
   }
 
@@ -111,26 +108,32 @@ export class GeminiDamageProvider implements DamageProvider {
       return { detections: [], notes };
     }
     const buf = Buffer.from(await imgRes.arrayBuffer());
+    // Groq free vision often caps ~4MB base64 payloads — shrink note if huge
+    if (buf.byteLength > 3.5 * 1024 * 1024) {
+      notes.push(`Photo[${imageIndex}] large (${Math.round(buf.byteLength / 1024)}KB); Groq may reject`);
+    }
     const mime = (imgRes.headers.get("content-type") || "image/jpeg").split(";")[0]!;
+    const dataUrl = `data:${mime};base64,${buf.toString("base64")}`;
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
-    const res = await fetch(url, {
+    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
-        contents: [
+        model: this.model,
+        temperature: 0.1,
+        response_format: { type: "json_object" },
+        messages: [
           {
             role: "user",
-            parts: [
-              { text: damageVisionPrompt(imageIndex, JSON.stringify(input.vehicle ?? {})) },
-              { inline_data: { mime_type: mime, data: buf.toString("base64") } },
+            content: [
+              { type: "text", text: damageVisionPrompt(imageIndex, JSON.stringify(input.vehicle ?? {})) },
+              { type: "image_url", image_url: { url: dataUrl } },
             ],
           },
         ],
-        generationConfig: {
-          temperature: 0.1,
-          responseMimeType: "application/json",
-        },
       }),
     });
 
@@ -140,15 +143,15 @@ export class GeminiDamageProvider implements DamageProvider {
     }
 
     const data = (await res.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      choices?: Array<{ message?: { content?: string } }>;
     };
-    const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+    const raw = data.choices?.[0]?.message?.content ?? "";
     if (!raw.trim()) {
-      notes.push(`Photo[${imageIndex}]: empty Gemini response`);
+      notes.push(`Photo[${imageIndex}]: empty Groq response`);
       return { detections: [], notes };
     }
 
     const parsed = parseDetectionsJson(raw, imageIndex);
-    return { detections: parsed.detections, notes: [...notes, ...parsed.notes.map((n) => `Gemini ${n}`)] };
+    return { detections: parsed.detections, notes: [...notes, ...parsed.notes.map((n) => `Groq ${n}`)] };
   }
 }
