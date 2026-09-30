@@ -22,7 +22,8 @@ type GeminiDet = {
 };
 
 /**
- * Gemini vision — one API call per photo so later angles are not skipped.
+ * Gemini vision — parallel per-photo calls with 503 retries.
+ * Returns partial detections if some photos succeed (does not fail the whole run).
  */
 export class GeminiDamageProvider implements DamageProvider {
   readonly name = "gemini";
@@ -49,19 +50,18 @@ export class GeminiDamageProvider implements DamageProvider {
     const notes: string[] = [];
     const detections: DamageDetection[] = [];
 
-    // Sequential per photo (avoids Gemini ignoring image 2/3 in a multi-image prompt)
-    for (let i = 0; i < input.imageUrls.length; i++) {
-      try {
-        const batch = await this.analyzeOne(input.imageUrls[i]!, i, input);
-        detections.push(...batch.detections);
-        notes.push(...batch.notes);
-      } catch (e) {
-        notes.push(`Photo[${i}] Gemini failed: ${e instanceof Error ? e.message : "error"}`);
-      }
+    // Parallel (all photos) — keeps total time under Vercel/Railway proxy limits
+    const results = await Promise.all(
+      input.imageUrls.map((url, i) => this.analyzeOneWithRetry(url, i, input)),
+    );
+
+    for (const r of results) {
+      detections.push(...r.detections);
+      notes.push(...r.notes);
     }
 
-    if (!detections.length && notes.some((n) => /failed|fetch|HTTP/i.test(n))) {
-      throw new Error(`Gemini found no detections. ${notes.slice(0, 3).join(" | ")}`);
+    if (!detections.length) {
+      throw new Error(`Gemini found no detections. ${notes.slice(0, 4).join(" | ")}`);
     }
 
     return {
@@ -70,9 +70,32 @@ export class GeminiDamageProvider implements DamageProvider {
       detections,
       notes: [
         ...notes,
-        `Gemini per-photo scan: ${input.imageUrls.length} image(s), ${detections.length} detection(s)`,
+        `Gemini parallel scan: ${input.imageUrls.length} image(s), ${detections.length} detection(s)`,
       ],
       analyzedAt: new Date().toISOString(),
+    };
+  }
+
+  private async analyzeOneWithRetry(
+    imageUrl: string,
+    imageIndex: number,
+    input: DamageAnalyzeInput,
+  ): Promise<{ detections: DamageDetection[]; notes: string[] }> {
+    const maxAttempts = 3;
+    let lastErr = "";
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await this.analyzeOne(imageUrl, imageIndex, input);
+      } catch (e) {
+        lastErr = e instanceof Error ? e.message : "error";
+        const retryable = /503|UNAVAILABLE|high demand|temporarily|429|RESOURCE_EXHAUSTED/i.test(lastErr);
+        if (!retryable || attempt === maxAttempts) break;
+        await sleep(800 * attempt * attempt);
+      }
+    }
+    return {
+      detections: [],
+      notes: [`Photo[${imageIndex}] Gemini failed after retries: ${lastErr.slice(0, 180)}`],
     };
   }
 
@@ -137,7 +160,7 @@ bbox normalized to THIS image. Vehicle: ${JSON.stringify(input.vehicle ?? {})}.`
 
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(`HTTP ${res.status} ${text.slice(0, 200)}`);
+      throw new Error(`HTTP ${res.status} ${text.slice(0, 220)}`);
     }
 
     const data = (await res.json()) as {
@@ -167,6 +190,10 @@ bbox normalized to THIS image. Vehicle: ${JSON.stringify(input.vehicle ?? {})}.`
     }
     return { detections, notes };
   }
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 function normalizeDet(d: GeminiDet, forcedIndex: number): DamageDetection {
