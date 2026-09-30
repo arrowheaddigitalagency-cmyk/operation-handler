@@ -341,31 +341,22 @@ export class DamageEstimateService {
     paint: { paintType?: PaintType; paintCode?: string },
   ): Promise<DamageAnalyzeResult> {
     const env = loadEnv();
-    try {
-      const gemini = createProviders({
-        DAMAGE_PROVIDER: "gemini",
-        GEMINI_API_KEY: env.GEMINI_API_KEY,
-        GEMINI_VISION_MODEL: env.GEMINI_VISION_MODEL,
-      }).damage;
-      return await gemini.analyze({
-        imageUrls,
-        vehicle: vehicle as never,
-        paintType: paint.paintType,
-        paintCode: paint.paintCode,
-      });
-    } catch (err) {
-      const mock = await createProviders({ DAMAGE_PROVIDER: "mock" }).damage.analyze({
-        imageUrls,
-        vehicle: vehicle as never,
-        paintType: paint.paintType,
-        paintCode: paint.paintCode,
-      });
-      mock.notes = [
-        ...(mock.notes ?? []),
-        `Gemini unavailable (${err instanceof Error ? err.message : "error"}); using mock`,
-      ];
-      return mock;
+    if (!env.GEMINI_API_KEY?.trim()) {
+      throw new Error(
+        "GEMINI_API_KEY is missing on the API server. Add it in Railway Variables (DAMAGE_PROVIDER=gemini alone is not enough).",
+      );
     }
+    const gemini = createProviders({
+      DAMAGE_PROVIDER: "gemini",
+      GEMINI_API_KEY: env.GEMINI_API_KEY,
+      GEMINI_VISION_MODEL: env.GEMINI_VISION_MODEL,
+    }).damage;
+    return gemini.analyze({
+      imageUrls,
+      vehicle: vehicle as never,
+      paintType: paint.paintType,
+      paintCode: paint.paintCode,
+    });
   }
 
   async updateLine(
