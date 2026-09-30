@@ -199,58 +199,50 @@ export function DamageEstimateWizard() {
   }, [lines]);
 
   return (
-    <div className="relative mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 -top-6 h-48 bg-[radial-gradient(ellipse_at_top,color-mix(in_srgb,var(--copper)_18%,transparent),transparent_70%)]"
-      />
-
-      <div className="relative">
+    <div className="site-light section-ambient">
+      <div className="relative mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-sm border border-[var(--copper)]/35 bg-[var(--copper)]/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--copper-hot)]">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[var(--copper-hot)] opacity-60" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[var(--copper-hot)]" />
-            </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--paper-line)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--copper)] shadow-sm">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--copper)]" />
             AI vision
           </span>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--steel)]">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
             Collision estimate
           </span>
         </div>
 
-        <h1 className="font-display mt-3 text-[clamp(1.75rem,5vw,2.5rem)] font-extrabold tracking-tight text-[var(--mist)]">
+        <h1 className="font-display mt-3 text-[clamp(1.85rem,5vw,2.65rem)] font-extrabold tracking-tight text-[var(--ink)]">
           Photo-by-photo damage scan
         </h1>
-        <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--steel)] sm:text-[15px]">
-          VIN decode, multi-model AI inspection of every photo, line-item range, then book an in-shop confirmation.
+        <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--muted)] sm:text-[15px]">
+          VIN decode, AI inspection of every photo, line-item range, then book an in-shop confirmation.
         </p>
 
-        <aside className="mt-4 space-y-2 rounded-sm border border-[var(--line)] bg-black/25 p-3 sm:p-4">
-          <p className="text-xs leading-relaxed text-[var(--mist)] sm:text-sm">{AI_MISTAKE_NOTE}</p>
-          <p className="text-[11px] leading-relaxed text-[var(--steel)] sm:text-xs">{AI_ESTIMATE_DISCLAIMER}</p>
+        <aside className="surface-quiet mt-5 space-y-2 rounded-xl p-4">
+          <p className="text-sm leading-relaxed text-[var(--ink)]">{AI_MISTAKE_NOTE}</p>
+          <p className="text-xs leading-relaxed text-[var(--muted)]">{AI_ESTIMATE_DISCLAIMER}</p>
         </aside>
 
         <DeProgressBar step={step} total={STEPS.length} labels={STEPS} />
 
         {session?.samplePricing && step >= 4 && (
-          <p className="mb-4 inline-flex rounded-sm border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-200">
+          <p className="mb-4 inline-flex rounded-lg border border-amber-500/30 bg-amber-50 px-2.5 py-1 text-xs text-amber-800">
             Sample pricing — starter catalog, not a final shop invoice
           </p>
         )}
 
         {error && (
-          <p className="mb-4 rounded-sm border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          <p className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </p>
         )}
 
         {step === 0 && (
-          <div className="panel space-y-4 rounded-sm p-4 sm:p-6">
-            <label className="block text-sm text-[var(--mist)]">
+          <div className="panel space-y-4 rounded-xl p-5 sm:p-6">
+            <label className="block text-sm font-medium text-[var(--ink)]">
               17-character VIN
               <input
-                className="field mt-1 uppercase"
+                className="field mt-1.5 uppercase"
                 value={vinInput}
                 onChange={(e) => setVinInput(e.target.value.toUpperCase())}
                 maxLength={17}
@@ -262,11 +254,11 @@ export function DamageEstimateWizard() {
               {loading ? "Decoding…" : "Decode VIN (NHTSA)"}
             </button>
             {vehicle && (
-              <div className="rounded-sm border border-[var(--copper)]/25 bg-[var(--copper)]/5 p-4 text-sm">
-                <p className="font-semibold text-[var(--mist)]">
+              <div className="rounded-xl border border-[var(--paper-line)] bg-[var(--paper-deep)] p-4 text-sm">
+                <p className="font-semibold text-[var(--ink)]">
                   {vehicle.year} {vehicle.make} {vehicle.model} {vehicle.trim ?? ""}
                 </p>
-                <ul className="mt-2 grid gap-1 text-[var(--steel)] sm:grid-cols-2">
+                <ul className="mt-2 grid gap-1 text-[var(--muted)] sm:grid-cols-2">
                   <li>Body: {vehicle.bodyClass ?? "—"}</li>
                   <li>Engine: {vehicle.engine ?? "—"}</li>
                   <li>Drive: {vehicle.driveType ?? "—"}</li>
@@ -281,8 +273,8 @@ export function DamageEstimateWizard() {
         )}
 
         {step === 1 && (
-          <div className="panel space-y-4 rounded-sm p-4 sm:p-6">
-            <p className="text-sm text-[var(--steel)]">
+          <div className="panel space-y-4 rounded-xl p-5 sm:p-6">
+            <p className="text-sm text-[var(--muted)]">
               Type the paint code from the door jamb sticker, or leave blank and pick paint type.
             </p>
             <input
@@ -295,22 +287,22 @@ export function DamageEstimateWizard() {
               {(["single_stage", "two_stage", "three_stage"] as const).map((t) => (
                 <label
                   key={t}
-                  className={`flex cursor-pointer gap-3 rounded-sm border p-3 text-sm transition ${
+                  className={`flex cursor-pointer gap-3 rounded-xl border p-3 text-sm transition ${
                     paintType === t
-                      ? "border-[var(--copper)]/50 bg-[var(--copper)]/10"
-                      : "border-[var(--line)]"
+                      ? "border-[var(--copper)]/40 bg-[color-mix(in_srgb,var(--copper)_8%,white)]"
+                      : "border-[var(--paper-line)] bg-white"
                   }`}
                 >
                   <input type="radio" name="paint" checked={paintType === t} onChange={() => setPaintType(t)} />
                   <span>
-                    <span className="font-medium text-[var(--mist)]">
+                    <span className="font-medium text-[var(--ink)]">
                       {t === "single_stage"
                         ? "Single-stage"
                         : t === "two_stage"
                           ? "Two-stage (base + clear)"
                           : "Three-stage / pearl"}
                     </span>
-                    <span className="mt-1 block text-[var(--steel)]">{PAINT_HELP[t]}</span>
+                    <span className="mt-1 block text-[var(--muted)]">{PAINT_HELP[t]}</span>
                   </span>
                 </label>
               ))}
@@ -327,8 +319,8 @@ export function DamageEstimateWizard() {
         )}
 
         {step === 2 && (
-          <div className="panel space-y-4 rounded-sm p-4 sm:p-6">
-            <p className="text-sm text-[var(--steel)]">
+          <div className="panel space-y-4 rounded-xl p-5 sm:p-6">
+            <p className="text-sm text-[var(--muted)]">
               Upload a full-car view from corners plus close-ups of damage. Every photo is scanned by AI.
             </p>
             <input
@@ -339,10 +331,10 @@ export function DamageEstimateWizard() {
               className="field"
               onChange={(e) => onPhotosSelected(e.target.files)}
             />
-            {loading && <p className="text-xs text-[var(--copper-hot)]">Compressing &amp; uploading…</p>}
+            {loading && <p className="text-xs text-[var(--copper)]">Compressing &amp; uploading…</p>}
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
               {photos.map((p, i) => (
-                <div key={p.storageKey} className="relative overflow-hidden rounded-sm border border-[var(--line)]">
+                <div key={p.storageKey} className="relative overflow-hidden rounded-xl border border-[var(--paper-line)]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={p.url} alt="" className="aspect-[4/3] w-full object-cover" />
                   <span className="absolute left-2 top-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">
@@ -378,16 +370,16 @@ export function DamageEstimateWizard() {
         )}
 
         {step === 3 && (
-          <div className="panel space-y-4 rounded-sm p-4 sm:p-6">
-            <div className="rounded-sm border border-[var(--copper)]/30 bg-gradient-to-br from-[var(--copper)]/15 to-transparent p-4">
-              <p className="text-sm font-medium text-[var(--mist)]">Ready to run multi-model AI scan</p>
-              <p className="mt-1 text-sm text-[var(--steel)]">
+          <div className="panel space-y-4 rounded-xl p-5 sm:p-6">
+            <div className="rounded-xl border border-[var(--paper-line)] bg-[var(--paper-deep)] p-4">
+              <p className="text-sm font-semibold text-[var(--ink)]">Ready to run AI scan</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">
                 Each of your {photos.length || "—"} photo{photos.length === 1 ? "" : "s"} is checked for dents,
                 scratches, cracks, lamps, and related exterior damage. You can edit lines afterward.
               </p>
             </div>
             {loading && (
-              <div className="flex items-center gap-3 rounded-sm border border-[var(--line)] bg-black/30 px-3 py-3 text-sm text-[var(--mist)]">
+              <div className="flex items-center gap-3 rounded-xl border border-[var(--paper-line)] bg-white px-3 py-3 text-sm text-[var(--ink)]">
                 <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--copper)] border-t-transparent" />
                 Scanning photos with AI… this can take a minute on free models.
               </div>
@@ -407,8 +399,8 @@ export function DamageEstimateWizard() {
           <div className="space-y-5 sm:space-y-6">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {photos.map((p, i) => (
-                <div key={p.storageKey} className="overflow-hidden rounded-sm border border-[var(--line)]">
-                  <div className="flex items-center justify-between border-b border-[var(--line)] bg-black/20 px-2 py-1 text-[10px] uppercase tracking-wide text-[var(--steel)]">
+                <div key={p.storageKey} className="overflow-hidden rounded-xl border border-[var(--paper-line)] bg-white shadow-sm">
+                  <div className="flex items-center justify-between border-b border-[var(--paper-line)] bg-[var(--paper-deep)] px-2.5 py-1.5 text-[10px] uppercase tracking-wide text-[var(--muted)]">
                     <span>Photo {i + 1}</span>
                     <span>
                       {(overlaysByPhoto[i]?.length ?? 0) > 0
@@ -421,32 +413,36 @@ export function DamageEstimateWizard() {
               ))}
             </div>
 
-            <div className="panel rounded-sm p-4 sm:p-5">
+            <div className="panel rounded-xl p-4 sm:p-5">
               <div className="mb-3 flex flex-wrap gap-2">
                 {(["OEM", "AFTERMARKET", "MIXED"] as const).map((m) => (
                   <button
                     key={m}
                     type="button"
-                    className={`rounded-sm px-3 py-1.5 text-xs ${mode === m ? "bg-[var(--copper)] text-white" : "border border-[var(--line)] text-[var(--steel)]"}`}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                      mode === m
+                        ? "bg-[var(--copper)] text-white"
+                        : "border border-[var(--paper-line)] text-[var(--muted)]"
+                    }`}
                     onClick={() => onMode(m)}
                   >
                     {m}
                   </button>
                 ))}
               </div>
-              <p className="text-xl font-semibold tabular-nums text-[var(--mist)] sm:text-2xl">
+              <p className="text-xl font-semibold tabular-nums text-[var(--ink)] sm:text-2xl">
                 ${session.rangeLow?.toFixed(0) ?? "—"} – ${session.rangeHigh?.toFixed(0) ?? "—"}
               </p>
-              <p className="mt-1 text-sm text-[var(--steel)]">
+              <p className="mt-1 text-sm text-[var(--muted)]">
                 Confidence: {session.confidence != null ? `${Math.round(session.confidence * 100)}%` : "—"}
                 {photoCount > 0 ? ` · Photos with detections: ${coveredPhotos}/${photoCount}` : ""}
               </p>
-              <p className="mt-3 border-t border-[var(--line)] pt-3 text-[11px] leading-relaxed text-[var(--steel)]">
+              <p className="mt-3 border-t border-[var(--paper-line)] pt-3 text-xs leading-relaxed text-[var(--muted)]">
                 {AI_MISTAKE_NOTE}
               </p>
               {analysisNotes.length > 0 && (
-                <details className="mt-3 text-xs text-[var(--steel)]">
-                  <summary className="cursor-pointer text-[var(--copper-hot)]">AI scan log</summary>
+                <details className="mt-3 text-xs text-[var(--muted)]">
+                  <summary className="cursor-pointer font-medium text-[var(--copper)]">AI scan log</summary>
                   <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto">
                     {analysisNotes.map((n, i) => (
                       <li key={i}>• {n}</li>
@@ -457,19 +453,19 @@ export function DamageEstimateWizard() {
             </div>
 
             <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--steel)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                 AI line items — edit if needed
               </p>
               {lines.map((l) => (
-                <div key={l.id} className="panel rounded-sm p-3 text-sm sm:p-4">
+                <div key={l.id} className="panel rounded-xl p-3 text-sm sm:p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-[var(--mist)]">{l.partName}</p>
-                      <p className="text-[var(--steel)]">
+                      <p className="font-medium text-[var(--ink)]">{l.partName}</p>
+                      <p className="text-[var(--muted)]">
                         {l.operation} · {l.severity ?? "—"} · {l.side ?? "—"}
                         {l.confidence != null ? ` · ${Math.round(l.confidence * 100)}%` : ""}
                       </p>
-                      <p className="mt-1 text-xs text-[var(--steel)]">
+                      <p className="mt-1 text-xs text-[var(--muted)]">
                         OEM: {l.oemPrice != null ? `$${l.oemPrice}` : "data needed"} · AM:{" "}
                         {l.aftermarketPrice != null ? `$${l.aftermarketPrice}` : "data needed"}
                         {l.capaCertified ? " · CAPA" : ""}
@@ -514,8 +510,8 @@ export function DamageEstimateWizard() {
         )}
 
         {step === 5 && (
-          <form className="panel space-y-3 rounded-sm p-4 sm:p-6" onSubmit={onBook}>
-            <p className="text-sm text-[var(--steel)]">
+          <form className="panel space-y-3 rounded-xl p-5 sm:p-6" onSubmit={onBook}>
+            <p className="text-sm text-[var(--muted)]">
               Pick a time — we create a shop appointment and CRM lead linked to this estimate.
             </p>
             <input
@@ -556,7 +552,7 @@ export function DamageEstimateWizard() {
                 </option>
               ))}
             </select>
-            <p className="text-[11px] text-[var(--steel)]">{AI_ESTIMATE_DISCLAIMER}</p>
+            <p className="text-xs text-[var(--muted)]">{AI_ESTIMATE_DISCLAIMER}</p>
             <div className="flex flex-col-reverse gap-2 sm:flex-row">
               <button type="button" className="btn-ghost" onClick={() => setStep(4)}>
                 Back
@@ -569,17 +565,17 @@ export function DamageEstimateWizard() {
         )}
 
         {step === 6 && (
-          <div className="panel space-y-4 rounded-sm p-4 sm:p-6">
-            <h2 className="text-xl font-semibold text-[var(--mist)]">You&apos;re booked</h2>
+          <div className="panel space-y-4 rounded-xl p-5 sm:p-6">
+            <h2 className="text-xl font-semibold text-[var(--ink)]">You&apos;re booked</h2>
             {trackingId && (
-              <p className="text-sm text-[var(--steel)]">
-                Tracking ID: <strong className="text-[var(--mist)]">{trackingId}</strong>
+              <p className="text-sm text-[var(--muted)]">
+                Tracking ID: <strong className="text-[var(--ink)]">{trackingId}</strong>
               </p>
             )}
-            <p className="text-sm text-[var(--steel)]">
+            <p className="text-sm text-[var(--muted)]">
               Estimate range: ${session?.rangeLow?.toFixed(0) ?? "—"} – ${session?.rangeHigh?.toFixed(0) ?? "—"}
             </p>
-            <p className="text-xs leading-relaxed text-[var(--steel)]">
+            <p className="text-xs leading-relaxed text-[var(--muted)]">
               Your lead is on the shop dashboard. {AI_MISTAKE_NOTE}
             </p>
             {session && (
@@ -592,7 +588,7 @@ export function DamageEstimateWizard() {
                 Download PDF summary
               </a>
             )}
-            <Link href="/track" className="block text-sm text-[var(--copper-hot)]">
+            <Link href="/track" className="block text-sm font-medium text-[var(--copper)]">
               Track your visit →
             </Link>
           </div>
