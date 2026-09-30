@@ -33,12 +33,14 @@ export class DamageEstimateService {
     return createProviders({
       NHTSA_VPIC_BASE_URL: env.NHTSA_VPIC_BASE_URL,
       VIN_PROVIDER: env.VIN_PROVIDER,
-      DAMAGE_PROVIDER: env.DAMAGE_PROVIDER === "onnx" || env.DAMAGE_PROVIDER === "gemini" ? "mock" : env.DAMAGE_PROVIDER,
+      DAMAGE_PROVIDER: env.DAMAGE_PROVIDER,
       PARTS_PROVIDER: env.PARTS_PROVIDER,
       LABOR_PROVIDER: env.LABOR_PROVIDER,
       PAINT_PROVIDER: env.PAINT_PROVIDER,
       OPEN_LABOR_API_KEY: env.OPEN_LABOR_API_KEY,
       OPEN_LABOR_BASE_URL: env.OPEN_LABOR_BASE_URL,
+      GEMINI_API_KEY: env.GEMINI_API_KEY,
+      GEMINI_VISION_MODEL: env.GEMINI_VISION_MODEL,
     });
   }
 
@@ -181,6 +183,9 @@ export class DamageEstimateService {
       analysis = await this.callOnnxService(env.ML_SERVICE_URL, photos.map((p) => p.url), vehicle, paint);
     } else if (env.DAMAGE_PROVIDER === "gemini" && env.GEMINI_API_KEY) {
       analysis = await this.callGeminiFallback(photos.map((p) => p.url), vehicle, paint);
+    } else if (env.GEMINI_API_KEY && env.DAMAGE_PROVIDER !== "mock") {
+      // onnx without ML URL → prefer Gemini over silent mock
+      analysis = await this.callGeminiFallback(photos.map((p) => p.url), vehicle, paint);
     } else {
       analysis = await this.providers().damage.analyze({
         imageUrls: photos.map((p) => p.url),
@@ -279,8 +284,25 @@ export class DamageEstimateService {
       if (!res.ok) throw new Error(`ML service ${res.status}`);
       return (await res.json()) as DamageAnalyzeResult;
     } catch (err) {
-      // Fall back to mock so the demo never hard-fails
-      const mock = await this.providers().damage.analyze({ imageUrls, vehicle: vehicle as never, paintType: paint.paintType });
+      // Prefer Gemini over mock when ONNX is down
+      const env = loadEnv();
+      if (env.GEMINI_API_KEY) {
+        try {
+          const g = await this.callGeminiFallback(imageUrls, vehicle, paint);
+          g.notes = [
+            ...(g.notes ?? []),
+            `ONNX unavailable (${err instanceof Error ? err.message : "error"}); used Gemini`,
+          ];
+          return g;
+        } catch {
+          /* fall through to mock */
+        }
+      }
+      const mock = await createProviders({ DAMAGE_PROVIDER: "mock" }).damage.analyze({
+        imageUrls,
+        vehicle: vehicle as never,
+        paintType: paint.paintType,
+      });
       mock.notes = [
         ...(mock.notes ?? []),
         `ONNX service unavailable (${err instanceof Error ? err.message : "error"}); using mock`,
@@ -294,20 +316,32 @@ export class DamageEstimateService {
     vehicle: Record<string, string | null>,
     paint: { paintType?: PaintType; paintCode?: string },
   ): Promise<DamageAnalyzeResult> {
-    // TODO: full multimodal Gemini call; for now use mock structure with clear note
-    // Real Gemini vision wiring lands with ml-service step — keep demo unblocked.
-    const mock = await this.providers().damage.analyze({
-      imageUrls,
-      vehicle: vehicle as never,
-      paintType: paint.paintType,
-      paintCode: paint.paintCode,
-    });
-    mock.provider = "gemini_fallback_pending";
-    mock.notes = [
-      ...(mock.notes ?? []),
-      "GEMINI_API_KEY present — full vision fallback will replace this mock payload in the ML step",
-    ];
-    return mock;
+    const env = loadEnv();
+    try {
+      const gemini = createProviders({
+        DAMAGE_PROVIDER: "gemini",
+        GEMINI_API_KEY: env.GEMINI_API_KEY,
+        GEMINI_VISION_MODEL: env.GEMINI_VISION_MODEL,
+      }).damage;
+      return await gemini.analyze({
+        imageUrls,
+        vehicle: vehicle as never,
+        paintType: paint.paintType,
+        paintCode: paint.paintCode,
+      });
+    } catch (err) {
+      const mock = await this.providers().damage.analyze({
+        imageUrls,
+        vehicle: vehicle as never,
+        paintType: paint.paintType,
+        paintCode: paint.paintCode,
+      });
+      mock.notes = [
+        ...(mock.notes ?? []),
+        `Gemini unavailable (${err instanceof Error ? err.message : "error"}); using mock`,
+      ];
+      return mock;
+    }
   }
 
   async updateLine(

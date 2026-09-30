@@ -8,6 +8,7 @@ import type {
 import { NhtsaVpicVinProvider } from "./vin/nhtsa-vpic.js";
 import { ChromeDataVinProvider, DataOneVinProvider } from "./vin/stubs.js";
 import { MockDamageProvider } from "./damage/mock.js";
+import { GeminiDamageProvider } from "./damage/gemini.js";
 import {
   TractableDamageProvider,
   VisionLlmDamageProvider,
@@ -43,6 +44,8 @@ export type ProviderEnv = {
   PAINT_PROVIDER?: string;
   OPEN_LABOR_API_KEY?: string;
   OPEN_LABOR_BASE_URL?: string;
+  GEMINI_API_KEY?: string;
+  GEMINI_VISION_MODEL?: string;
 };
 
 export function createProviders(env: ProviderEnv = {}): ProviderBundle {
@@ -67,6 +70,9 @@ function createDamage(env: ProviderEnv): DamageProvider {
   if (kind === "yolo") return new YoloDamageProvider();
   if (kind === "vision_llm") return new VisionLlmDamageProvider();
   if (kind === "tractable") return new TractableDamageProvider();
+  if (kind === "gemini") {
+    return new GeminiDamageProvider(env.GEMINI_API_KEY ?? "", env.GEMINI_VISION_MODEL);
+  }
   return new MockDamageProvider();
 }
 
