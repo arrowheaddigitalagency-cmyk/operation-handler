@@ -222,13 +222,6 @@ export function DamageEstimateWizard() {
     return map;
   }, [lines]);
 
-  const analysisNotes = useMemo(() => {
-    const versions = session?.versions ?? [];
-    const ai = [...versions].reverse().find((v) => v.kind === "AI_ANALYSIS");
-    const notes = ai?.payloadJson?.notes;
-    return Array.isArray(notes) ? notes.filter((n): n is string => typeof n === "string") : [];
-  }, [session?.versions]);
-
   const photoCount = photos.length;
   const coveredPhotos = useMemo(() => {
     const set = new Set<number>();
@@ -480,15 +473,11 @@ export function DamageEstimateWizard() {
               <p className="mt-3 border-t border-[var(--paper-line)] pt-3 text-xs leading-relaxed text-[var(--muted)]">
                 {AI_MISTAKE_NOTE}
               </p>
-              {analysisNotes.length > 0 && (
-                <details className="mt-3 text-xs text-[var(--muted)]">
-                  <summary className="cursor-pointer font-medium text-[var(--copper)]">AI scan log</summary>
-                  <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto">
-                    {analysisNotes.map((n, i) => (
-                      <li key={i}>• {n}</li>
-                    ))}
-                  </ul>
-                </details>
+              {photoCount > 0 && coveredPhotos < photoCount && (
+                <p className="mt-2 text-xs text-amber-800">
+                  Only {coveredPhotos} of {photoCount} photos returned damage marks. Free AI quota can skip photos —
+                  wait 1–2 minutes and run analysis again, or add/edit lines manually below.
+                </p>
               )}
             </div>
 

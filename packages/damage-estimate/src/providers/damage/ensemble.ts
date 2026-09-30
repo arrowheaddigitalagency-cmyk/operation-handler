@@ -6,11 +6,11 @@ import type {
 } from "../types.js";
 import { GeminiDamageProvider } from "./gemini.js";
 import { GroqDamageProvider } from "./groq.js";
-import { mergeDetections, sleep } from "./vision-shared.js";
+import { sleep } from "./vision-shared.js";
 
 /**
- * Sequential per-photo dual scan: Gemini + Groq, merge best detections.
- * If one provider fails on a photo, the other still contributes.
+ * Sequential per-photo scan with free-tier friendly failover:
+ * try Gemini first; if empty/failed, try Groq. Avoids dual 429 bursts.
  */
 export class EnsembleDamageProvider implements DamageProvider {
   readonly name = "ensemble";
@@ -46,39 +46,57 @@ export class EnsembleDamageProvider implements DamageProvider {
     }
 
     const notes: string[] = [
-      `Ensemble: sequential dual-scan (${this.gemini ? "Gemini" : ""}${this.gemini && this.groq ? "+" : ""}${this.groq ? "Groq" : ""}) over ${input.imageUrls.length} photo(s)`,
+      `Ensemble failover scan over ${input.imageUrls.length} photo(s)`,
     ];
     const detections: DamageDetection[] = [];
+    let geminiQuotaHit = false;
+    let groqQuotaHit = false;
 
     for (let i = 0; i < input.imageUrls.length; i++) {
       const url = input.imageUrls[i]!;
-      let geminiDets: DamageDetection[] = [];
-      let groqDets: DamageDetection[] = [];
+      let chosen: DamageDetection[] = [];
+      let source = "none";
 
-      if (this.gemini) {
+      if (this.gemini && !geminiQuotaHit) {
         const g = await this.gemini.analyzePhoto(url, i, input);
-        geminiDets = g.detections;
         notes.push(...g.notes);
+        if (g.notes.some((n) => /429|quota|RESOURCE_EXHAUSTED|rate limit/i.test(n))) {
+          geminiQuotaHit = true;
+        }
+        if (g.detections.length) {
+          chosen = g.detections;
+          source = "gemini";
+        }
       }
-      if (this.groq) {
-        // slight stagger to reduce dual free-tier bursts
-        await sleep(250);
+
+      if (!chosen.length && this.groq && !groqQuotaHit) {
+        await sleep(1200);
         const q = await this.groq.analyzePhoto(url, i, input);
-        groqDets = q.detections;
         notes.push(...q.notes);
+        if (q.notes.some((n) => /429|quota|rate limit/i.test(n))) {
+          groqQuotaHit = true;
+        }
+        if (q.detections.length) {
+          chosen = q.detections;
+          source = "groq";
+        }
       }
 
-      const merged = mergeDetections(geminiDets, groqDets);
-      detections.push(...merged);
-      notes.push(
-        `Photo[${i}] merge: Gemini ${geminiDets.length} + Groq ${groqDets.length} → ${merged.length}`,
-      );
+      // Last resort: if primary was empty (not quota) and secondary also empty, already noted
+      detections.push(...chosen);
+      notes.push(`Photo[${i}] used ${source}: ${chosen.length} detection(s)`);
 
-      if (i < input.imageUrls.length - 1) await sleep(500);
+      // Free-tier pacing between photos
+      if (i < input.imageUrls.length - 1) {
+        const pause = geminiQuotaHit || groqQuotaHit ? 3500 : 1800;
+        await sleep(pause);
+      }
     }
 
     if (!detections.length) {
-      throw new Error(`Ensemble found no detections. ${notes.slice(-6).join(" | ")}`);
+      throw new Error(
+        `No damage found after scanning ${input.imageUrls.length} photo(s). Free API quota may be exhausted — wait a few minutes and retry.`,
+      );
     }
 
     return {

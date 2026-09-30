@@ -78,7 +78,7 @@ export class GroqDamageProvider implements DamageProvider {
     imageIndex: number,
     input: DamageAnalyzeInput,
   ): Promise<{ detections: DamageDetection[]; notes: string[] }> {
-    const maxAttempts = 3;
+    const maxAttempts = 4;
     let lastErr = "";
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -87,7 +87,8 @@ export class GroqDamageProvider implements DamageProvider {
         lastErr = e instanceof Error ? e.message : "error";
         const retryable = /503|429|rate|timeout|temporar|overloaded/i.test(lastErr);
         if (!retryable || attempt === maxAttempts) break;
-        await sleep(900 * attempt * attempt);
+        const base = /429|rate/i.test(lastErr) ? 5000 : 1000;
+        await sleep(base * attempt * attempt);
       }
     }
     return {

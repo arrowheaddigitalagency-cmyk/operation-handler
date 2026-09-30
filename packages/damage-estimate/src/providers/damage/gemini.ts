@@ -81,7 +81,7 @@ export class GeminiDamageProvider implements DamageProvider {
     imageIndex: number,
     input: DamageAnalyzeInput,
   ): Promise<{ detections: DamageDetection[]; notes: string[] }> {
-    const maxAttempts = 3;
+    const maxAttempts = 4;
     let lastErr = "";
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -90,7 +90,9 @@ export class GeminiDamageProvider implements DamageProvider {
         lastErr = e instanceof Error ? e.message : "error";
         const retryable = /503|UNAVAILABLE|high demand|temporarily|429|RESOURCE_EXHAUSTED/i.test(lastErr);
         if (!retryable || attempt === maxAttempts) break;
-        await sleep(800 * attempt * attempt);
+        // Free-tier 429 needs longer cool-down than 503
+        const base = /429|RESOURCE_EXHAUSTED|quota/i.test(lastErr) ? 4000 : 900;
+        await sleep(base * attempt * attempt);
       }
     }
     return {

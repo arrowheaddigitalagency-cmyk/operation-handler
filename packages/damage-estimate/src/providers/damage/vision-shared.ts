@@ -21,9 +21,16 @@ export type GeminiDet = {
 export function damageVisionPrompt(imageIndex: number, vehicleJson: string): string {
   return `You are an expert auto-body collision estimator doing a photo-by-photo inspection.
 This is photo index ${imageIndex} only. Inspect the WHOLE frame carefully.
-Report EVERY visible exterior defect, including light ones: scuffs, swirl marks that look like paint transfer, clear-coat scratches, small dents, creases, chips, cracked lenses, misaligned panels, torn bumper, missing trim.
+Report EVERY visible exterior defect, including light ones: scuffs, paint transfer, clear-coat scratches, small dents, creases, chips, cracked lenses, misaligned panels, torn bumper, missing trim.
 One photo may have MULTIPLE damaged parts — list each as its own detection.
 Do NOT invent damage that is not visible. Only return empty detections if the panel truly looks undamaged.
+
+CRITICAL bbox rules (normalized 0–1 to THIS image):
+- bbox must TIGHTLY wrap the actual damaged pixels (scratch/dent/scuff), NOT the whole panel and NOT a nearby lamp/grille.
+- Front bumper cover damage is almost always in the LOWER third of a front/3-quarter view (y typically ≥ 0.55). Do NOT place a bumper bbox on the headlamp/grille area.
+- Headlamp/taillamp damage uses partName like "Left headlamp" with bbox on the lamp only.
+- Side scratches on doors/fenders: bbox on the scratch streak, not the entire door.
+- If unsure of part name, prefer the panel under the damaged pixels.
 
 Return STRICT JSON only:
 {
@@ -36,11 +43,11 @@ Return STRICT JSON only:
       "operation": "repair"|"replace"|"refinish"|"blend"|"r_and_i",
       "confidence": 0.0-1.0,
       "bbox": { "x": 0-1, "y": 0-1, "w": 0-1, "h": 0-1 },
-      "description": "short"
+      "description": "short — where on the panel"
     }
   ]
 }
-bbox normalized to THIS image. Vehicle: ${vehicleJson}.`;
+Vehicle: ${vehicleJson}.`;
 }
 
 export function parseDetectionsJson(
