@@ -177,96 +177,116 @@ export class DamageEstimateService {
 
     const paint = (session.paintJson ?? {}) as { paintType?: PaintType; paintCode?: string };
     const vehicle = (session.vehicleJson ?? {}) as Record<string, string | null>;
+    const imageUrls = this.analysisImageUrls(photos);
 
-    let analysis: DamageAnalyzeResult;
-    if (env.DAMAGE_PROVIDER === "onnx" && env.ML_SERVICE_URL) {
-      analysis = await this.callOnnxService(env.ML_SERVICE_URL, photos.map((p) => p.url), vehicle, paint);
-    } else if (env.DAMAGE_PROVIDER === "gemini" && env.GEMINI_API_KEY) {
-      analysis = await this.callGeminiFallback(photos.map((p) => p.url), vehicle, paint);
-    } else if (env.GEMINI_API_KEY && env.DAMAGE_PROVIDER !== "mock") {
-      // onnx without ML URL → prefer Gemini over silent mock
-      analysis = await this.callGeminiFallback(photos.map((p) => p.url), vehicle, paint);
-    } else {
-      analysis = await this.providers().damage.analyze({
-        imageUrls: photos.map((p) => p.url),
-        vehicle: vehicle as never,
-        paintType: paint.paintType,
-        paintCode: paint.paintCode,
-      });
-    }
+    try {
+      let analysis: DamageAnalyzeResult;
+      if (env.DAMAGE_PROVIDER === "onnx" && env.ML_SERVICE_URL) {
+        analysis = await this.callOnnxService(env.ML_SERVICE_URL, imageUrls, vehicle, paint);
+      } else if (
+        (env.DAMAGE_PROVIDER === "gemini" || (env.DAMAGE_PROVIDER !== "mock" && !!env.GEMINI_API_KEY)) &&
+        env.GEMINI_API_KEY
+      ) {
+        analysis = await this.callGeminiFallback(imageUrls, vehicle, paint);
+      } else {
+        analysis = await createProviders({ DAMAGE_PROVIDER: "mock" }).damage.analyze({
+          imageUrls,
+          vehicle: vehicle as never,
+          paintType: paint.paintType,
+          paintCode: paint.paintCode,
+        });
+      }
 
-    await this.prisma.damageEstimateVersion.create({
-      data: {
-        sessionId: id,
-        kind: "AI_ANALYSIS",
-        label: `provider:${analysis.provider}`,
-        payloadJson: analysis as object,
-      },
-    });
-
-    await this.prisma.damageEstimateLine.deleteMany({ where: { sessionId: id } });
-
-    const parts = this.providers().parts;
-    const labor = this.providers().labor;
-    let sortOrder = 0;
-    for (const d of analysis.detections) {
-      const quote = await parts.quote({
-        vin: session.vin ?? "UNKNOWN",
-        partName: d.partName,
-        year: vehicle.year,
-        make: vehicle.make,
-        model: vehicle.model,
-      });
-      const hours = await labor.quote({
-        partName: d.partName,
-        operation: d.operation,
-        severity: d.severity,
-        paintType: paint.paintType,
-        year: vehicle.year,
-        make: vehicle.make,
-        model: vehicle.model,
-        vin: session.vin,
-      });
-      await this.prisma.damageEstimateLine.create({
+      await this.prisma.damageEstimateVersion.create({
         data: {
           sessionId: id,
-          sourceDetectionId: d.id,
-          partName: d.partName,
-          partNumber: quote.partNumber,
-          description: quote.description,
-          side: d.side,
-          damageType: d.damageType,
-          severity: d.severity,
-          operation: d.operation,
-          confidence: d.confidence,
-          bboxJson: d.bbox ?? undefined,
-          imageIndex: d.imageIndex,
-          oemPrice: quote.oemPrice,
-          aftermarketPrice: quote.aftermarketPrice,
-          recycledPrice: quote.recycledPrice,
-          capaCertified: quote.capaCertified,
-          bodyHours: hours.bodyHours,
-          structuralHours: hours.structuralHours,
-          mechanicalHours: hours.mechanicalHours,
-          refinishHours: hours.refinishHours,
-          blendHours: hours.blendHours,
-          sortOrder: sortOrder++,
+          kind: "AI_ANALYSIS",
+          label: `provider:${analysis.provider}`,
+          payloadJson: analysis as object,
         },
       });
+
+      await this.prisma.damageEstimateLine.deleteMany({ where: { sessionId: id } });
+
+      const parts = this.providers().parts;
+      const labor = this.providers().labor;
+      let sortOrder = 0;
+      for (const d of analysis.detections) {
+        const quote = await parts.quote({
+          vin: session.vin ?? "UNKNOWN",
+          partName: d.partName,
+          year: vehicle.year,
+          make: vehicle.make,
+          model: vehicle.model,
+        });
+        const hours = await labor.quote({
+          partName: d.partName,
+          operation: d.operation,
+          severity: d.severity,
+          paintType: paint.paintType,
+          year: vehicle.year,
+          make: vehicle.make,
+          model: vehicle.model,
+          vin: session.vin,
+        });
+        await this.prisma.damageEstimateLine.create({
+          data: {
+            sessionId: id,
+            sourceDetectionId: d.id,
+            partName: d.partName,
+            partNumber: quote.partNumber,
+            description: quote.description,
+            side: d.side,
+            damageType: d.damageType,
+            severity: d.severity,
+            operation: d.operation,
+            confidence: d.confidence,
+            bboxJson: d.bbox ?? undefined,
+            imageIndex: d.imageIndex,
+            oemPrice: quote.oemPrice,
+            aftermarketPrice: quote.aftermarketPrice,
+            recycledPrice: quote.recycledPrice,
+            capaCertified: quote.capaCertified,
+            bodyHours: hours.bodyHours,
+            structuralHours: hours.structuralHours,
+            mechanicalHours: hours.mechanicalHours,
+            refinishHours: hours.refinishHours,
+            blendHours: hours.blendHours,
+            sortOrder: sortOrder++,
+          },
+        });
+      }
+
+      const priced = await this.priceInternal(id, (session.pricingMode as PricingMode) || "MIXED", true);
+
+      await this.prisma.damageEstimateVersion.create({
+        data: {
+          sessionId: id,
+          kind: "ESTIMATE_AI",
+          label: "Original AI estimate",
+          payloadJson: priced as object,
+        },
+      });
+
+      return this.getSession(id);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Analyze failed";
+      throw new BadRequestException(`AI analysis failed: ${msg.slice(0, 280)}`);
     }
+  }
 
-    const priced = await this.priceInternal(id, (session.pricingMode as PricingMode) || "MIXED", true);
-
-    await this.prisma.damageEstimateVersion.create({
-      data: {
-        sessionId: id,
-        kind: "ESTIMATE_AI",
-        label: "Original AI estimate",
-        payloadJson: priced as object,
-      },
+  /** Prefer Railway API host for local uploads so Gemini can download the bytes. */
+  private analysisImageUrls(photos: PhotoMeta[]): string[] {
+    const env = loadEnv();
+    const api = env.API_URL.replace(/\/$/, "");
+    const apiOk = /^https?:\/\//i.test(api) && !/localhost|127\.0\.0\.1/i.test(api);
+    return photos.map((p) => {
+      const key = p.storageKey;
+      if (apiOk && key && !key.includes("/") && !key.includes("\\") && !/^https?:\/\//i.test(key)) {
+        return `${api}/api/v1/media/local/${encodeURIComponent(key)}`;
+      }
+      return p.url;
     });
-
-    return this.getSession(id);
   }
 
   private async callOnnxService(
@@ -330,7 +350,7 @@ export class DamageEstimateService {
         paintCode: paint.paintCode,
       });
     } catch (err) {
-      const mock = await this.providers().damage.analyze({
+      const mock = await createProviders({ DAMAGE_PROVIDER: "mock" }).damage.analyze({
         imageUrls,
         vehicle: vehicle as never,
         paintType: paint.paintType,

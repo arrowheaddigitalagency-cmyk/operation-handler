@@ -93,8 +93,12 @@ export class StorageService {
       stream.end(file.buffer);
     });
 
-    // Public media URL must use APP_URL (browser-facing), never loopback API_URL
-    const base = env.APP_URL.replace(/\/$/, "");
+    // Local uploads live on the API host (Railway). Public URL must use API_URL so
+    // Gemini and browsers can fetch them. APP_URL (Vercel) alone 404s the file bytes.
+    const api = env.API_URL.replace(/\/$/, "");
+    const app = env.APP_URL.replace(/\/$/, "");
+    const base =
+      /^https?:\/\//i.test(api) && !/localhost|127\.0\.0\.1/i.test(api) ? api : app;
     return {
       storageKey: filename,
       url: `${base}/api/v1/media/local/${filename}`,
