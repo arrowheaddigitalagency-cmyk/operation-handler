@@ -66,6 +66,7 @@ export class DamageEstimateService {
         status: "DRAFT",
         samplePricing: true,
       },
+      include: { lines: { orderBy: { sortOrder: "asc" } }, versions: true, bookings: true },
     });
   }
 

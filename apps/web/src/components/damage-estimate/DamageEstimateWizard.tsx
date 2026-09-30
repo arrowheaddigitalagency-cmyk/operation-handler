@@ -9,6 +9,7 @@ import {
   bookSession,
   createSession,
   decodeVin,
+  getSession,
   getSlots,
   patchSession,
   priceSession,
@@ -32,6 +33,11 @@ const PAINT_HELP: Record<string, string> = {
 const AI_MISTAKE_NOTE =
   "AI can make mistakes. It may miss light damage, mislabel a panel, or over/under-estimate severity. A Cars Compound technician confirms everything in person.";
 
+function isSessionMissing(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /session not found|not found|404/i.test(msg);
+}
+
 export function DamageEstimateWizard() {
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -49,12 +55,41 @@ export function DamageEstimateWizard() {
   const photos = session?.photosJson ?? [];
   const lines = session?.lines ?? [];
 
-  const ensureSession = useCallback(async () => {
-    if (session) return session;
-    const s = await createSession();
-    setSession(s);
-    return s;
-  }, [session]);
+  /** Create or revive a session; re-attaches VIN/vehicle from local state after API redeploys. */
+  const ensureSession = useCallback(
+    async (forceNew = false): Promise<DeSession> => {
+      if (!forceNew && session) {
+        try {
+          const live = await getSession(session.id);
+          setSession(live);
+          return live;
+        } catch (e) {
+          if (!isSessionMissing(e)) throw e;
+          // Stale id after Railway restart / DB wipe — fall through to recreate
+        }
+      }
+      let s = await createSession();
+      if (vehicle) {
+        s = await patchSession(s.id, { vin: vehicle.vin, vehicleJson: vehicle });
+      } else if (vinInput.trim().length === 17) {
+        s = await patchSession(s.id, { vin: vinInput.trim().toUpperCase() });
+      }
+      setSession(s);
+      return s;
+    },
+    [session, vehicle, vinInput],
+  );
+
+  async function withSessionRetry<T>(fn: (s: DeSession) => Promise<T>): Promise<T> {
+    const s = await ensureSession();
+    try {
+      return await fn(s);
+    } catch (e) {
+      if (!isSessionMissing(e)) throw e;
+      const fresh = await ensureSession(true);
+      return fn(fresh);
+    }
+  }
 
   async function onDecode() {
     setError(null);
@@ -62,8 +97,9 @@ export function DamageEstimateWizard() {
     try {
       const v = await decodeVin(vinInput);
       setVehicle(v);
-      const s = await ensureSession();
-      const updated = await patchSession(s.id, { vin: v.vin, vehicleJson: v });
+      const updated = await withSessionRetry((s) =>
+        patchSession(s.id, { vin: v.vin, vehicleJson: v }),
+      );
       setSession(updated);
     } catch (e) {
       setError(e instanceof Error ? e.message : "VIN decode failed");
@@ -76,14 +112,20 @@ export function DamageEstimateWizard() {
     setError(null);
     setLoading(true);
     try {
-      const s = await ensureSession();
-      const updated = await patchSession(s.id, {
-        paintJson: { paintCode: paintCode || undefined, paintType, notes: PAINT_HELP[paintType] },
-      });
+      const updated = await withSessionRetry((s) =>
+        patchSession(s.id, {
+          paintJson: { paintCode: paintCode || undefined, paintType, notes: PAINT_HELP[paintType] },
+          ...(vehicle ? { vin: vehicle.vin, vehicleJson: vehicle } : {}),
+        }),
+      );
       setSession(updated);
       setStep(2);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save paint");
+      setError(
+        e instanceof Error
+          ? e.message
+          : "Could not save paint — try Continue again (server may have restarted)",
+      );
     } finally {
       setLoading(false);
     }
@@ -94,14 +136,13 @@ export function DamageEstimateWizard() {
     setError(null);
     setLoading(true);
     try {
-      const s = await ensureSession();
       const compressed: File[] = [];
       for (const f of Array.from(fileList)) {
         if (!f.type.startsWith("image/")) continue;
         compressed.push(await compressImageFile(f));
       }
       if (!compressed.length) throw new Error("Please choose image files (JPG/PNG/WebP)");
-      const updated = await uploadPhotos(s.id, compressed);
+      const updated = await withSessionRetry((s) => uploadPhotos(s.id, compressed));
       setSession(updated);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
@@ -114,8 +155,7 @@ export function DamageEstimateWizard() {
     setError(null);
     setLoading(true);
     try {
-      if (!session) throw new Error("Missing session");
-      const updated = await analyzeSession(session.id);
+      const updated = await withSessionRetry((s) => analyzeSession(s.id));
       setSession(updated);
       setStep(4);
     } catch (e) {
@@ -289,7 +329,7 @@ export function DamageEstimateWizard() {
                   key={t}
                   className={`flex cursor-pointer gap-3 rounded-xl border p-3 text-sm transition ${
                     paintType === t
-                      ? "border-[var(--copper)]/40 bg-[color-mix(in_srgb,var(--copper)_8%,white)]"
+                      ? "border-[var(--copper)] bg-white shadow-[0_0_0_1px_var(--copper)]"
                       : "border-[var(--paper-line)] bg-white"
                   }`}
                 >
