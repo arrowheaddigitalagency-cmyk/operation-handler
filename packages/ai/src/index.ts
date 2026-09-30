@@ -157,7 +157,7 @@ export class GeminiVisionProvider implements VisionProvider {
 
   constructor(
     private readonly apiKey: string,
-    model = "gemini-2.0-flash",
+    model = "gemini-3.8-flash",
   ) {
     this.modelVersion = model;
   }

@@ -29,7 +29,7 @@ export class GeminiDamageProvider implements DamageProvider {
 
   constructor(
     private readonly apiKey: string,
-    private readonly model = "gemini-2.0-flash",
+    private readonly model = "gemini-3.8-flash",
   ) {}
 
   async analyze(input: DamageAnalyzeInput): Promise<DamageAnalyzeResult> {
