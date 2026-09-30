@@ -20,6 +20,7 @@ import { LeadsModule } from "./modules/leads/leads.module";
 import { SettingsModule } from "./modules/settings/settings.module";
 import { SupportModule } from "./modules/support/support.module";
 import { SystemModule } from "./modules/system/system.module";
+import { DamageEstimateModule } from "./modules/damage-estimate/damage-estimate.module";
 import { HealthController } from "./health.controller";
 import { JwtAuthGuard } from "./modules/auth/jwt-auth.guard";
 
@@ -44,6 +45,7 @@ import { JwtAuthGuard } from "./modules/auth/jwt-auth.guard";
     SettingsModule,
     SupportModule,
     SystemModule,
+    DamageEstimateModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }],

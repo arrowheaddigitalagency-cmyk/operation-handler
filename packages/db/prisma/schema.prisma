@@ -94,6 +94,8 @@ model Organization {
   settings  ShopSettings?
   priceBands RepairPriceBand[]
   leads     Lead[]
+  damageEstimateSessions DamageEstimateSession[]
+  damageEstimateRateSettings DamageEstimateRateSettings?
 }
 
 model ShopSettings {
@@ -648,4 +650,154 @@ model JobLock {
   expiresAt DateTime
 
   @@index([expiresAt])
+}
+
+// ---------------------------------------------------------------------------
+// Damage Estimate module (additive only — CCC-style estimating track)
+// ---------------------------------------------------------------------------
+
+enum DamageEstimateStatus {
+  DRAFT
+  ANALYZED
+  PRICED
+  BOOKED
+  REVIEWED
+  COMPLETED
+}
+
+enum DamageEstimateVersionKind {
+  AI_ANALYSIS
+  ESTIMATE_AI
+  ESTIMATE_STAFF
+  ESTIMATE_PRICED
+}
+
+model DamageEstimateSession {
+  id               String               @id @default(cuid())
+  organizationId   String?
+  organization     Organization?        @relation(fields: [organizationId], references: [id])
+  publicToken      String               @unique @default(cuid())
+  status           DamageEstimateStatus @default(DRAFT)
+  vin              String?
+  vehicleJson      Json?
+  paintJson        Json?
+  photosJson       Json?
+  pricingMode      String               @default("MIXED")
+  samplePricing    Boolean              @default(true)
+  rangeLow         Float?
+  rangeHigh        Float?
+  confidence       Float?
+  customerName     String?
+  customerEmail    String?
+  customerPhone    String?
+  appointmentId    String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  lines            DamageEstimateLine[]
+  versions         DamageEstimateVersion[]
+  bookings         DamageEstimateBooking[]
+  benchmarks       DamageEstimateBenchmark[]
+
+  @@index([organizationId, status])
+  @@index([createdAt])
+  @@index([vin])
+}
+
+model DamageEstimateLine {
+  id                 String               @id @default(cuid())
+  sessionId          String
+  session            DamageEstimateSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sourceDetectionId  String?
+  partName           String
+  partNumber         String?
+  description        String?
+  side               String?
+  damageType         String?
+  severity           String?
+  operation          String
+  confidence         Float?
+  bboxJson           Json?
+  imageIndex         Int?
+  oemPrice           Float?
+  aftermarketPrice   Float?
+  recycledPrice      Float?
+  capaCertified      Boolean              @default(false)
+  bodyHours          Float?
+  structuralHours    Float?
+  mechanicalHours    Float?
+  refinishHours      Float?
+  blendHours         Float?
+  subletAmount       Float?
+  sortOrder          Int                  @default(0)
+  editedByStaff      Boolean              @default(false)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@index([sessionId])
+}
+
+/// Immutable snapshots: original AI, staff edits, priced totals (for AI vs staff vs CCC).
+model DamageEstimateVersion {
+  id         String                     @id @default(cuid())
+  sessionId  String
+  session    DamageEstimateSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  kind       DamageEstimateVersionKind
+  label      String?
+  payloadJson Json
+  createdById String?
+  createdAt  DateTime                   @default(now())
+
+  @@index([sessionId, kind])
+  @@index([createdAt])
+}
+
+model DamageEstimateRateSettings {
+  id                          String       @id @default(cuid())
+  organizationId              String       @unique
+  organization                Organization @relation(fields: [organizationId], references: [id])
+  bodyRatePerHour             Float        @default(75)
+  paintRatePerHour            Float        @default(85)
+  mechanicalRatePerHour       Float        @default(95)
+  frameRatePerHour            Float        @default(110)
+  paintMaterialPerRefinishHour Float       @default(45)
+  triCoatMultiplier           Float        @default(1.35)
+  blendMultiplier             Float        @default(1)
+  taxRate                     Float        @default(0.07)
+  markupPercent               Float        @default(0)
+  currency                    String       @default("USD")
+  createdAt                   DateTime     @default(now())
+  updatedAt                   DateTime     @updatedAt
+}
+
+model DamageEstimateBooking {
+  id            String               @id @default(cuid())
+  sessionId     String
+  session       DamageEstimateSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  name          String
+  phone         String
+  email         String
+  preferredAt   DateTime?
+  slotLabel     String?
+  notes         String?
+  appointmentId String?
+  createdAt     DateTime             @default(now())
+
+  @@index([sessionId])
+}
+
+model DamageEstimateBenchmark {
+  id              String               @id @default(cuid())
+  sessionId       String?
+  session         DamageEstimateSession? @relation(fields: [sessionId], references: [id])
+  organizationId  String?
+  label           String?
+  sourceFormat    String?
+  rawExport       String
+  parsedJson      Json?
+  comparisonJson  Json?
+  accuracyScore   Float?
+  createdAt       DateTime             @default(now())
+
+  @@index([sessionId])
+  @@index([createdAt])
 }

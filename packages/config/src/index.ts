@@ -39,6 +39,24 @@ export const envSchema = z.object({
   AI_MAX_IMAGES: z.coerce.number().int().positive().default(8),
   AI_MAX_IMAGE_MB: z.coerce.number().positive().default(8),
 
+  // Damage-estimate module (CCC-style track) — free providers
+  VIN_PROVIDER: z.enum(["nhtsa", "dataone", "chromedata"]).default("nhtsa"),
+  NHTSA_VPIC_BASE_URL: z.string().url().default("https://vpic.nhtsa.dot.gov/api"),
+  DAMAGE_PROVIDER: z.enum(["mock", "onnx", "gemini", "yolo", "tractable"]).default("mock"),
+  ML_SERVICE_URL: z.string().url().optional(),
+  PARTS_PROVIDER: z
+    .enum(["mock", "collision_catalog", "partstech", "oeconnection", "partslink24", "lkq"])
+    .default("collision_catalog"),
+  LABOR_PROVIDER: z.enum(["mock", "openlabor", "motor"]).default("mock"),
+  PAINT_PROVIDER: z.enum(["mock"]).default("mock"),
+  OPEN_LABOR_API_KEY: z.string().optional(),
+  OPEN_LABOR_BASE_URL: z.string().url().default("https://openlaborproject.com"),
+  ROBOFLOW_API_KEY: z.string().optional(),
+  KAGGLE_USERNAME: z.string().optional(),
+  KAGGLE_KEY: z.string().optional(),
+  DE_MAX_IMAGES: z.coerce.number().int().positive().default(12),
+  DE_MAX_IMAGE_MB: z.coerce.number().positive().default(8),
+
   EMAIL_PROVIDER: z.enum(["console", "resend"]).default("console"),
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("noreply@carscompound.local"),

@@ -13,6 +13,7 @@
   "dependencies": {
     "@cc/ai": "workspace:*",
     "@cc/config": "workspace:*",
+    "@cc/damage-estimate": "workspace:*",
     "@cc/db": "workspace:*",
     "@cc/domain": "workspace:*",
     "@cc/notifications": "workspace:*",

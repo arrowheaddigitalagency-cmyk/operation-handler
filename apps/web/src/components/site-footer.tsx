@@ -9,6 +9,7 @@ import { SERVICES, SITE, isLightRoute } from "@/content/site";
 const quickLinks = [
   { href: "/", label: "Home" },
   { href: "/assess", label: "AI Damage Assess" },
+  { href: "/damage-estimate", label: "CCC-style Estimate" },
   { href: "/book", label: "Book Appointment" },
   { href: "/track", label: "Track Repair" },
   { href: "/login", label: "Login / Portal" },

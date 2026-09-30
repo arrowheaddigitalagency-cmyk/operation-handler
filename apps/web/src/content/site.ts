@@ -259,6 +259,7 @@ export const LIGHT_ROUTES = [
   "/faq",
   "/contact",
   "/assess",
+  "/damage-estimate",
   "/book",
   "/track",
 ] as const;

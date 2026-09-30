@@ -9,6 +9,7 @@ const NAV: Array<{ href: string; label: string; exact?: boolean }> = [
   { href: "/staff", label: "Overview", exact: true },
   { href: "/staff/leads", label: "Leads" },
   { href: "/staff/intake", label: "Intake" },
+  { href: "/staff/damage-estimates", label: "Estimates" },
   { href: "/staff/settings", label: "Settings" },
 ];
 

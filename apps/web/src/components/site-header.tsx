@@ -9,6 +9,7 @@ import { SITE, isLightRoute } from "@/content/site";
 const links = [
   { href: "/", label: "Home" },
   { href: "/assess", label: "AI Assess" },
+  { href: "/damage-estimate", label: "Estimate", desktop: "xl" as const },
   { href: "/track", label: "Track" },
   { href: "/services", label: "Services" },
   { href: "/process", label: "Process", desktop: "xl" as const },
