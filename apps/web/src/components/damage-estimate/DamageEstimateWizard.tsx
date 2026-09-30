@@ -512,16 +512,24 @@ export function DamageEstimateWizard() {
                       </p>
                     </div>
                     <select
-                      className="field w-full text-xs sm:max-w-[140px]"
+                      className="field w-full text-xs sm:max-w-[160px]"
                       value={l.operation}
                       onChange={async (e) => {
                         setSession(await updateLine(session.id, l.id, { operation: e.target.value }));
                         await onMode(mode);
                       }}
                     >
-                      {["repair", "replace", "refinish", "blend", "r_and_i"].map((op) => (
-                        <option key={op} value={op}>
-                          {op}
+                      {(
+                        [
+                          ["repair", "Repair"],
+                          ["replace", "Replace"],
+                          ["refinish", "Refinish"],
+                          ["blend", "Blend"],
+                          ["r_and_i", "R&I"],
+                        ] as const
+                      ).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
                         </option>
                       ))}
                     </select>

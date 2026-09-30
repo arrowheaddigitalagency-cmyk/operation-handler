@@ -10,23 +10,23 @@ export function PhotoWithOverlays({
   boxes: { bbox: BBox; label: string; color?: string }[];
 }) {
   return (
-    <div className="relative overflow-hidden rounded-xl border border-[var(--paper-line)] bg-[var(--paper-deep)]">
+    <div className="relative w-full overflow-hidden rounded-xl border border-[var(--paper-line)] bg-[var(--paper-deep)]">
+      {/* Width-driven image so absolute bboxes align to photo pixels (no letterbox mismatch). */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt="Damage photo" className="block w-full object-contain max-h-72" />
+      <img src={url} alt="Damage photo" className="block h-auto w-full" />
       {boxes.map((b, i) => (
         <div
           key={i}
-          className="pointer-events-none absolute border-2"
+          className="pointer-events-none absolute border-2 border-[var(--copper)] shadow-[0_0_0_1px_rgba(0,0,0,0.35)]"
           style={{
             left: `${b.bbox.x * 100}%`,
             top: `${b.bbox.y * 100}%`,
-            width: `${b.bbox.w * 100}%`,
-            height: `${b.bbox.h * 100}%`,
-            borderColor: b.color ?? "#f59e0b",
+            width: `${Math.max(b.bbox.w, 0.04) * 100}%`,
+            height: `${Math.max(b.bbox.h, 0.04) * 100}%`,
           }}
           title={b.label}
         >
-          <span className="absolute left-0 top-0 max-w-full truncate bg-black/70 px-1 text-[10px] text-white">
+          <span className="absolute left-0 top-0 z-[1] max-w-[min(100%,12rem)] truncate rounded-br bg-[var(--ink)]/85 px-1.5 py-0.5 text-[10px] font-semibold text-white">
             {b.label}
           </span>
         </div>

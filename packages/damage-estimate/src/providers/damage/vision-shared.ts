@@ -25,12 +25,13 @@ Report EVERY visible exterior defect, including light ones: scuffs, paint transf
 One photo may have MULTIPLE damaged parts — list each as its own detection.
 Do NOT invent damage that is not visible. Only return empty detections if the panel truly looks undamaged.
 
-CRITICAL bbox rules (normalized 0–1 to THIS image):
-- bbox must TIGHTLY wrap the actual damaged pixels (scratch/dent/scuff), NOT the whole panel and NOT a nearby lamp/grille.
-- Front bumper cover damage is almost always in the LOWER third of a front/3-quarter view (y typically ≥ 0.55). Do NOT place a bumper bbox on the headlamp/grille area.
-- Headlamp/taillamp damage uses partName like "Left headlamp" with bbox on the lamp only.
-- Side scratches on doors/fenders: bbox on the scratch streak, not the entire door.
-- If unsure of part name, prefer the panel under the damaged pixels.
+CRITICAL bbox rules (normalized 0–1, origin top-left of THIS photo):
+- bbox = tight box around the VISIBLE damage pixels only (the scratch/dent/scuff), never the whole car.
+- Never place a bbox on asphalt/ground, sky, or empty background. If damage is on a body panel, the box must sit on painted metal/plastic.
+- Front bumper / bumper cover: box must sit on the bumper fascia — usually LOWER third (center y ≥ 0.55). NEVER on headlamp, grille, or hood.
+- Headlamp damage: partName must be headlamp/headlight and box on the lamp only.
+- Door / fender / quarter side damage: box on the panel face mid-height (center y roughly 0.35–0.75), never below the rocker onto the ground.
+- Prefer a smaller accurate box over a large guessed box.
 
 Return STRICT JSON only:
 {
@@ -75,7 +76,7 @@ export function parseDetectionsJson(
 }
 
 export function normalizeDet(d: GeminiDet, forcedIndex: number): DamageDetection {
-  const bbox = d.bbox
+  const rawBbox = d.bbox
     ? {
         x: clamp01(Number(d.bbox.x)),
         y: clamp01(Number(d.bbox.y)),
@@ -83,17 +84,72 @@ export function normalizeDet(d: GeminiDet, forcedIndex: number): DamageDetection
         h: clamp01(Number(d.bbox.h)),
       }
     : undefined;
+  const partName = d.partName.trim();
   return {
     id: randomUUID(),
-    partName: d.partName.trim(),
+    partName,
     side: normalizeSide(d.side),
     damageType: normalizeDamageType(d.damageType),
     severity: normalizeSeverity(d.severity),
     operation: normalizeOp(d.operation, d.severity),
     confidence: clamp01(Number(d.confidence) || 0.7),
     imageIndex: forcedIndex,
-    bbox,
+    bbox: rawBbox ? sanitizeBbox(partName, rawBbox) : undefined,
   };
+}
+
+/** Correct common vision bbox mistakes (bumper on lamp, door on ground, etc.). */
+function sanitizeBbox(
+  partName: string,
+  bbox: { x: number; y: number; w: number; h: number },
+): { x: number; y: number; w: number; h: number } {
+  let { x, y, w, h } = bbox;
+  // Keep boxes from blowing up to full-frame
+  w = Math.min(w, 0.55);
+  h = Math.min(h, 0.45);
+  if (w < 0.04) w = 0.12;
+  if (h < 0.04) h = 0.1;
+
+  const name = partName.toLowerCase();
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+
+  if (/bumper/.test(name)) {
+    // Bumper damage lives low — pull high boxes down off lamps/grille
+    if (cy < 0.52) {
+      y = 0.58;
+      h = Math.min(h, 0.28);
+    }
+    if (y + h > 0.98) y = Math.max(0.55, 0.98 - h);
+  } else if (/door|fender|quarter|rocker|panel/.test(name)) {
+    // Side panels mid-body — pull boxes off asphalt
+    if (cy > 0.82 || y > 0.78) {
+      y = 0.38;
+      h = Math.min(Math.max(h, 0.14), 0.32);
+    }
+    if (cy < 0.22) {
+      y = 0.32;
+    }
+  } else if (/hood/.test(name)) {
+    if (cy > 0.55) {
+      y = 0.12;
+      h = Math.min(h, 0.28);
+    }
+  } else if (/headlamp|headlight|taillamp|taillight|lamp/.test(name)) {
+    // Lamps sit mid-front; avoid ground
+    if (cy > 0.75) {
+      y = 0.32;
+      h = Math.min(h, 0.18);
+    }
+  }
+
+  x = clamp01(x);
+  y = clamp01(y);
+  if (x + w > 1) w = 1 - x;
+  if (y + h > 1) h = 1 - y;
+  // Prefer left-of-center for left sides when box drifted right on front bumper corners
+  void cx;
+  return { x, y, w: clamp01(w), h: clamp01(h) };
 }
 
 export function sleep(ms: number) {
