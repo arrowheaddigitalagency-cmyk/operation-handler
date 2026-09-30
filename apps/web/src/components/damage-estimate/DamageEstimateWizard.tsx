@@ -232,8 +232,19 @@ export function DamageEstimateWizard() {
   }, [lines]);
 
   return (
-    <div className="site-light section-ambient">
-      <div className="relative mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+    <div className="site-light min-h-[100svh]">
+      <header className="sticky top-0 z-30 border-b border-[var(--paper-line)] bg-white/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Link href="/" className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--ink)]">
+            Cars Compound
+          </Link>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--copper)]">
+            AI estimate
+          </span>
+        </div>
+      </header>
+
+      <div className="relative mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-10">
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--paper-line)] bg-white px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--copper)] shadow-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-[var(--copper)]" />
@@ -244,14 +255,14 @@ export function DamageEstimateWizard() {
           </span>
         </div>
 
-        <h1 className="font-display mt-3 text-[clamp(1.85rem,5vw,2.65rem)] font-extrabold tracking-tight text-[var(--ink)]">
+        <h1 className="font-display mt-3 text-[clamp(1.65rem,5.5vw,2.65rem)] font-extrabold tracking-tight text-[var(--ink)]">
           Photo-by-photo damage scan
         </h1>
         <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--muted)] sm:text-[15px]">
           VIN decode, AI inspection of every photo, line-item range, then book an in-shop confirmation.
         </p>
 
-        <aside className="surface-quiet mt-5 space-y-2 rounded-xl p-4">
+        <aside className="surface-quiet mt-4 space-y-2 rounded-xl p-3.5 sm:mt-5 sm:p-4">
           <p className="text-sm leading-relaxed text-[var(--ink)]">{AI_MISTAKE_NOTE}</p>
           <p className="text-xs leading-relaxed text-[var(--muted)]">{AI_ESTIMATE_DISCLAIMER}</p>
         </aside>
@@ -414,7 +425,7 @@ export function DamageEstimateWizard() {
             {loading && (
               <div className="flex items-center gap-3 rounded-xl border border-[var(--paper-line)] bg-white px-3 py-3 text-sm text-[var(--ink)]">
                 <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--copper)] border-t-transparent" />
-                Scanning photos with AI… this can take a minute on free models.
+                Scanning photos with AI… this can take a minute.
               </div>
             )}
             <div className="flex flex-col-reverse gap-2 sm:flex-row">
@@ -475,8 +486,8 @@ export function DamageEstimateWizard() {
               </p>
               {photoCount > 0 && coveredPhotos < photoCount && (
                 <p className="mt-2 text-xs text-amber-800">
-                  Only {coveredPhotos} of {photoCount} photos returned damage marks. Free AI quota can skip photos —
-                  wait 1–2 minutes and run analysis again, or add/edit lines manually below.
+                  Only {coveredPhotos} of {photoCount} photos returned damage marks. Wait a minute and run
+                  analysis again, or add/edit lines manually below.
                 </p>
               )}
             </div>

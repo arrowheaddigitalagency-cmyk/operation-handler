@@ -2799,6 +2799,11 @@ a {
   background: #0b0e13;
 }
 
+.app-shell-main--light {
+  background: var(--paper);
+  color: var(--ink);
+}
+
 body.theme-staff {
   color: var(--mist);
   background: #0b0e13;
