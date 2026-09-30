@@ -10,7 +10,7 @@ export function PhotoWithOverlays({
   boxes: { bbox: BBox; label: string; color?: string }[];
 }) {
   return (
-    <div className="relative overflow-hidden rounded-sm border border-[var(--line)] bg-black/40">
+    <div className="relative overflow-hidden rounded-xl border border-[var(--paper-line)] bg-[var(--paper-deep)]">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={url} alt="Damage photo" className="block w-full object-contain max-h-72" />
       {boxes.map((b, i) => (
