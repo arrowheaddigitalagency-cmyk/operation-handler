@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
 import { Montserrat, Manrope } from "next/font/google";
 import "./globals.css";
-import { SiteHeader } from "@/components/site-header";
-import { SiteFooter } from "@/components/site-footer";
 import { SmoothScroll } from "@/components/smooth-scroll";
 import { SitePreloader } from "@/components/site-preloader";
-import { AiAssessWidget } from "@/components/ai-assess-widget";
-import { ScrollProgress } from "@/components/motion/scroll-progress";
+import { SiteChrome } from "@/components/site-chrome";
 
 const montserrat = Montserrat({
   subsets: ["latin"],
@@ -33,11 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body suppressHydrationWarning>
         <SitePreloader />
         <SmoothScroll>
-          <ScrollProgress />
-          <SiteHeader />
-          <main>{children}</main>
-          <SiteFooter />
-          <AiAssessWidget />
+          <SiteChrome>{children}</SiteChrome>
         </SmoothScroll>
       </body>
     </html>
